@@ -1,0 +1,423 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// PLATFORM & MULTI-TENANCY
+// ------------------------------------------------------
+
+model Tenant {
+  id        String   @id @default(uuid())
+  slug      String   @unique // For tenant portal: serviceos.com/s/[slug]
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  users                 User[]
+  customerRelationships CustomerTenantRelationship[]
+  customerRecords       CustomerRecord[]
+  quotes                Quote[]
+  invoices              Invoice[]
+  jobs                  Job[]
+  serviceRequests       ServiceRequest[]
+  assets                Asset[]
+  maintenanceSchedules  MaintenanceSchedule[]
+  notifications         Notification[]
+
+  settings TenantSettings?
+}
+
+model TenantSettings {
+  id       String @id @default(uuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Config domains as JSON to allow flexible schemas
+  businessProfile Json? // Company Name, Address, Currency, Tax
+  branding        Json? // Logos, Colors
+  portal          Json? // Enabled features, welcome message
+  quotes          Json?
+  invoices        Json?
+  payments        Json?
+  notifications   Json?
+  scheduling      Json?
+  technicians     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------
+// STAFF / USERS (RBAC)
+// ------------------------------------------------------
+
+enum Role {
+  PLATFORM_ADMIN
+  TENANT_OWNER
+  TENANT_ADMIN
+  MANAGER
+  SALES
+  TECHNICIAN
+  ACCOUNTANT
+}
+
+model User {
+  id           String  @id @default(uuid())
+  email        String  @unique
+  passwordHash String
+  phone        String?
+  firstName    String
+  lastName     String
+
+  tenantId String? // Nullable because Platform Admin might not belong to a tenant
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  role Role?
+  assignedJobs   Job[]
+  notifications  Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------
+// CUSTOMER IDENTITY & RELATIONSHIPS
+// ------------------------------------------------------
+
+// 1. ServiceOS Customer Identity (The authenticated person using ServiceOS)
+model ServiceOSIdentity {
+  id     String         @id @default(uuid())
+  phone  String?        @unique
+  email  String?        @unique
+  status IdentityStatus @default(PENDING) // PENDING | ACTIVE | SUSPENDED | LOCKED
+
+  // They can belong to multiple tenants
+  tenantRelationships CustomerTenantRelationship[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum IdentityStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  LOCKED
+}
+
+// 2. Customer Record (Business's customer info)
+model CustomerRecord {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Business data
+  name    String
+  email   String?
+  phone   String?
+  address String?
+  city    String?
+
+  relationships CustomerTenantRelationship[]
+  quotes        Quote[]
+  jobs          Job[]
+  invoices      Invoice[]
+  assets        Asset[]
+  serviceRequests ServiceRequest[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// 3. Customer-Tenant Relationship (Links Identity, Tenant, and Customer Record)
+model CustomerTenantRelationship {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  customerRecordId String
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  identityId String? // Can be null if identity is not yet established (invitation pending)
+  identity   ServiceOSIdentity? @relation(fields: [identityId], references: [id], onDelete: SetNull)
+
+  status PortalStatus @default(NOT_ACTIVATED)
+
+  invitations Invitation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, customerRecordId])
+}
+
+enum PortalStatus {
+  NOT_ACTIVATED
+  INVITATION_PENDING
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+// ------------------------------------------------------
+// INVITATIONS
+// ------------------------------------------------------
+
+model Invitation {
+  id             String                     @id @default(uuid())
+  tokenHash      String                     @unique // Secure hash
+  relationshipId String
+  relationship   CustomerTenantRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum InvitationStatus {
+  PENDING
+  DELIVERED
+  OPENED
+  EXPIRED
+  ACCEPTED
+  REVOKED
+}
+
+// ------------------------------------------------------
+// BUSINESS ENTITIES (STUBS FOR MODULES)
+// ------------------------------------------------------
+
+model Asset {
+  id               String         @id @default(uuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name             String
+  manufacturer     String?
+  modelNumber      String?
+  serialNumber     String?
+  installDate      DateTime?
+  status           AssetStatus    @default(ACTIVE)
+
+  customerRecordId String
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  warrantyExpiresAt DateTime?
+  warrantyDocumentUrl String?
+
+  serviceRequests  ServiceRequest[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([tenantId])
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+model Quote {
+  id               String         @id @default(uuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  customerRecordId String
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  title            String
+  amount           Decimal
+  status           QuoteStatus    @default(DRAFT)
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  jobs             Job[]
+
+  @@index([tenantId])
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Invoice {
+  id               String         @id @default(uuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  title            String
+  amount           Decimal
+  status           InvoiceStatus  @default(DRAFT)
+  
+  customerRecordId String
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  jobId            String?
+  job              Job?           @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  dueDate          DateTime?
+  paidAt           DateTime?
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([tenantId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Job {
+  id                   String         @id @default(uuid())
+  tenantId             String
+  tenant               Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  title                String
+  description          String?
+  status               JobStatus      @default(SCHEDULED)
+  
+  customerRecordId     String
+  customerRecord       CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+  
+  quoteId              String?
+  quote                Quote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  assignedTechnicianId String?
+  assignedTechnician   User?          @relation(fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
+
+  scheduledAt          DateTime?
+  startedAt            DateTime?
+  completedAt          DateTime?
+
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  invoices             Invoice[]
+  serviceRequests      ServiceRequest[]
+
+  @@index([tenantId])
+}
+
+enum JobStatus {
+  SCHEDULED
+  EN_ROUTE
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ServiceRequest {
+  id               String               @id @default(uuid())
+  tenantId         String
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  description      String
+  status           ServiceRequestStatus @default(OPEN)
+
+  customerRecordId String
+  customerRecord   CustomerRecord       @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  assetId          String?
+  asset            Asset?               @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  jobId            String?
+  job              Job?                 @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([tenantId])
+}
+
+enum ServiceRequestStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+model MaintenanceSchedule {
+  id               String            @id @default(uuid())
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  title            String
+  intervalMonths   Int
+  nextDueDate      DateTime
+  status           ScheduleStatus    @default(ACTIVE)
+
+  customerRecordId String
+  customerRecord   CustomerRecord    @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  assetId          String?
+  asset            Asset?            @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  currentJobId     String?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([tenantId])
+  @@index([nextDueDate])
+}
+
+enum ScheduleStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  linkUrl   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, userId])
+}
