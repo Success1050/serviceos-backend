@@ -41,6 +41,8 @@ export class JwtGuard implements CanActivate {
         email: payload.email,
         role: payload.role,
         tenantId: payload.tenantId,
+        relationshipId: payload.relationshipId, // Required for Customer Portal
+        phone: payload.phone,
       };
     } catch (err) {
       throw new UnauthorizedException('Invalid or expired authentication token');
