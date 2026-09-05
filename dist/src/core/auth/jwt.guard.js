@@ -45,6 +45,8 @@ let JwtGuard = class JwtGuard {
                 email: payload.email,
                 role: payload.role,
                 tenantId: payload.tenantId,
+                relationshipId: payload.relationshipId,
+                phone: payload.phone,
             };
         }
         catch (err) {
