@@ -16,9 +16,9 @@ export declare class MaintenanceController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.ScheduleStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.ScheduleStatus;
         title: string;
         assetId: string | null;
         intervalMonths: number;
@@ -29,9 +29,9 @@ export declare class MaintenanceController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.ScheduleStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.ScheduleStatus;
         title: string;
         assetId: string | null;
         intervalMonths: number;
@@ -42,9 +42,9 @@ export declare class MaintenanceController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.ScheduleStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.ScheduleStatus;
         title: string;
         assetId: string | null;
         intervalMonths: number;

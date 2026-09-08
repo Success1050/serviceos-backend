@@ -18,8 +18,14 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Hierarchy (V2)
+  parentId  String?
+  parent    Tenant?  @relation("TenantHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Tenant[] @relation("TenantHierarchy")
+
   // Relationships
   users                 User[]
+  departments           Department[]
   customerRelationships CustomerTenantRelationship[]
   customerRecords       CustomerRecord[]
   quotes                Quote[]
@@ -29,8 +35,51 @@ model Tenant {
   assets                Asset[]
   maintenanceSchedules  MaintenanceSchedule[]
   notifications         Notification[]
+  announcements         Announcement[]
+  internalTickets       InternalTicket[]
 
   settings TenantSettings?
+  auditLogs             AuditLog[]
+}
+
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  URGENT
+}
+
+enum InternalTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+model Announcement {
+  id            String               @id @default(uuid())
+  tenantId      String               // HQ Tenant
+  title         String
+  content       String
+  priority      AnnouncementPriority @default(NORMAL)
+  targetTenants String[]             // If empty, global. If populated, only these Tenant IDs see it.
+  
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model InternalTicket {
+  id          String               @id @default(uuid())
+  tenantId    String               // Sub-Company Tenant
+  authorId    String
+  title       String
+  description String
+  status      InternalTicketStatus @default(OPEN)
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author      User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 }
 
 model TenantSettings {
@@ -48,6 +97,7 @@ model TenantSettings {
   notifications   Json?
   scheduling      Json?
   technicians     Json?
+  lockedSettings  Json? // Fields that HQ forces onto sub-companies (e.g. ['branding', 'businessProfile'])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,6 +106,21 @@ model TenantSettings {
 // ------------------------------------------------------
 // STAFF / USERS (RBAC)
 // ------------------------------------------------------
+
+model Department {
+  id       String @id @default(uuid())
+  tenantId String
+  name     String
+  
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users    User[]
+}
+
+enum UserStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+}
 
 enum Role {
   PLATFORM_ADMIN
@@ -75,15 +140,22 @@ model User {
   firstName    String
   lastName     String
 
+  status                UserStatus @default(ACTIVE)
+  requiresPasswordReset Boolean    @default(false)
+  departmentId          String?
+  department            Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
   tenantId String? // Nullable because Platform Admin might not belong to a tenant
   tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   role Role?
-  assignedJobs   Job[]
-  notifications  Notification[]
+  assignedJobs    Job[]
+  notifications   Notification[]
+  internalTickets InternalTicket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  auditLogs      AuditLog[]
 }
 
 // ------------------------------------------------------
@@ -421,3 +493,27 @@ model Notification {
 
   @@index([tenantId, userId])
 }
+
+// ------------------------------------------------------
+// AUDIT LOG
+// ------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action     String   // e.g., "UPDATE_SETTINGS", "DELETE_QUOTE"
+  entityType String   // e.g., "TenantSettings", "Quote"
+  entityId   String?  // ID of the affected record
+  details    Json?    // Stores what changed (before/after)
+  
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+

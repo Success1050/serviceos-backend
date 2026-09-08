@@ -8,9 +8,9 @@ export declare class ServiceRequestService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         description: string;
         assetId: string | null;
         jobId: string | null;
@@ -33,9 +33,9 @@ export declare class ServiceRequestService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         description: string;
         assetId: string | null;
         jobId: string | null;
@@ -44,9 +44,9 @@ export declare class ServiceRequestService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         description: string;
         assetId: string | null;
         jobId: string | null;

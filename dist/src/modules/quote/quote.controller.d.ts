@@ -7,9 +7,9 @@ export declare class QuoteController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.QuoteStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.QuoteStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
     }>;
@@ -22,9 +22,9 @@ export declare class QuoteController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.QuoteStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.QuoteStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
     })[]>;
@@ -32,9 +32,9 @@ export declare class QuoteController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.QuoteStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.QuoteStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
     }>;

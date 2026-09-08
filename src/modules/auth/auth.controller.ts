@@ -18,4 +18,9 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
+
+  @Post('reset-temp-password')
+  async resetTempPassword(@Body() body: any) {
+    return this.authService.resetTempPassword(body.email, body.tempPassword, body.newPassword);
+  }
 }

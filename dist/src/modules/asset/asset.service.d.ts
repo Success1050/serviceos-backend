@@ -8,9 +8,9 @@ export declare class AssetService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.AssetStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.AssetStatus;
         manufacturer: string | null;
         modelNumber: string | null;
         serialNumber: string | null;
@@ -28,9 +28,9 @@ export declare class AssetService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.AssetStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.AssetStatus;
         manufacturer: string | null;
         modelNumber: string | null;
         serialNumber: string | null;

@@ -8,9 +8,9 @@ export declare class JobService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.JobStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.JobStatus;
         title: string;
         description: string | null;
         quoteId: string | null;
@@ -32,9 +32,9 @@ export declare class JobService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.JobStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.JobStatus;
         title: string;
         description: string | null;
         quoteId: string | null;
@@ -47,9 +47,9 @@ export declare class JobService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.JobStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.JobStatus;
         title: string;
         description: string | null;
         quoteId: string | null;

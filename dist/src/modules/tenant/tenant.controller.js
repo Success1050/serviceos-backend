@@ -29,6 +29,12 @@ let TenantController = class TenantController {
     async getBySlug(slug) {
         return this.tenantService.getTenantBySlug(slug);
     }
+    async createSubCompany(createTenantDto, user) {
+        if (!user.tenantId || (user.role !== 'TENANT_OWNER' && user.role !== 'TENANT_ADMIN')) {
+            throw new Error('Unauthorized to create sub-companies for this tenant');
+        }
+        return this.tenantService.createSubCompany(user.tenantId, createTenantDto);
+    }
 };
 exports.TenantController = TenantController;
 __decorate([
@@ -47,6 +53,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], TenantController.prototype, "getBySlug", null);
+__decorate([
+    (0, common_1.Post)('sub-companies'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_tenant_dto_1.CreateTenantDto, Object]),
+    __metadata("design:returntype", Promise)
+], TenantController.prototype, "createSubCompany", null);
 exports.TenantController = TenantController = __decorate([
     (0, common_1.Controller)('tenants'),
     __metadata("design:paramtypes", [tenant_service_1.TenantService])

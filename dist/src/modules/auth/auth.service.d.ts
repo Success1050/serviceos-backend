@@ -15,6 +15,9 @@ export declare class AuthService {
         phone: string | null;
         firstName: string;
         lastName: string;
+        status: import("@prisma/client").$Enums.UserStatus;
+        requiresPasswordReset: boolean;
+        departmentId: string | null;
         tenantId: string | null;
         role: import("@prisma/client").$Enums.Role | null;
     }>;
@@ -27,9 +30,15 @@ export declare class AuthService {
             phone: string | null;
             firstName: string;
             lastName: string;
+            status: import("@prisma/client").$Enums.UserStatus;
+            requiresPasswordReset: boolean;
+            departmentId: string | null;
             tenantId: string | null;
             role: import("@prisma/client").$Enums.Role | null;
         };
         accessToken: string;
+    }>;
+    resetTempPassword(email: string, tempPassword: string, newPassword: string): Promise<{
+        message: string;
     }>;
 }

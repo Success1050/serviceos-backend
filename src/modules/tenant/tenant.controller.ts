@@ -21,4 +21,15 @@ export class TenantController {
   async getBySlug(@Param('slug') slug: string) {
     return this.tenantService.getTenantBySlug(slug);
   }
+
+  @Post('sub-companies')
+  async createSubCompany(
+    @Body() createTenantDto: CreateTenantDto,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.tenantId || (user.role !== 'TENANT_OWNER' && user.role !== 'TENANT_ADMIN')) {
+      throw new Error('Unauthorized to create sub-companies for this tenant');
+    }
+    return this.tenantService.createSubCompany(user.tenantId, createTenantDto);
+  }
 }

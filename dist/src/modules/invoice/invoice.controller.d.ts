@@ -7,9 +7,9 @@ export declare class InvoiceController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.InvoiceStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.InvoiceStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
         jobId: string | null;
@@ -29,9 +29,9 @@ export declare class InvoiceController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.InvoiceStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.InvoiceStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
         jobId: string | null;
@@ -42,9 +42,9 @@ export declare class InvoiceController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.InvoiceStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.InvoiceStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
         jobId: string | null;
@@ -55,9 +55,9 @@ export declare class InvoiceController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.InvoiceStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.InvoiceStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
         jobId: string | null;

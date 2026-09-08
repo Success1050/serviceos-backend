@@ -61,6 +61,38 @@ let TenantService = class TenantService {
         });
         return result;
     }
+    async createSubCompany(parentId, createTenantDto) {
+        const existing = await this.prisma.tenant.findUnique({
+            where: { slug: createTenantDto.slug },
+        });
+        if (existing) {
+            throw new common_1.ConflictException('Tenant slug is already taken');
+        }
+        const parent = await this.prisma.tenant.findUnique({
+            where: { id: parentId },
+        });
+        if (!parent) {
+            throw new common_1.NotFoundException('Parent tenant not found');
+        }
+        const tenant = await this.prisma.tenant.create({
+            data: {
+                name: createTenantDto.name,
+                slug: createTenantDto.slug,
+                parentId: parent.id,
+                settings: {
+                    create: {
+                        businessProfile: { companyName: createTenantDto.name },
+                        branding: {},
+                        portal: { enabled: true, welcomeMessage: `Welcome to ${createTenantDto.name}` },
+                    },
+                },
+            },
+            include: {
+                settings: true,
+            },
+        });
+        return tenant;
+    }
     async getTenantBySlug(slug) {
         const tenant = await this.prisma.tenant.findUnique({
             where: { slug },

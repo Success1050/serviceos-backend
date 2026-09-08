@@ -25,10 +25,17 @@ const import_module_1 = require("./modules/import/import.module");
 const service_request_module_1 = require("./modules/service-request/service-request.module");
 const maintenance_module_1 = require("./modules/maintenance/maintenance.module");
 const notification_module_1 = require("./modules/notification/notification.module");
+const audit_log_module_1 = require("./modules/audit-log/audit-log.module");
+const settings_module_1 = require("./modules/settings/settings.module");
+const mail_module_1 = require("./core/mail/mail.module");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const jwt_guard_1 = require("./core/auth/jwt.guard");
 const roles_guard_1 = require("./core/auth/roles.guard");
+const user_module_1 = require("./modules/user/user.module");
+const department_module_1 = require("./modules/department/department.module");
+const announcement_module_1 = require("./modules/announcement/announcement.module");
+const internal_ticket_module_1 = require("./modules/internal-ticket/internal-ticket.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -39,14 +46,15 @@ exports.AppModule = AppModule = __decorate([
             schedule_1.ScheduleModule.forRoot(),
             bull_1.BullModule.forRoot({
                 redis: {
-                    host: 'localhost',
-                    port: 6379,
+                    host: process.env.REDIS_HOST || 'localhost',
+                    port: parseInt(process.env.REDIS_PORT || '6379'),
                 },
             }),
             prisma_module_1.PrismaModule,
+            auth_module_1.AuthModule,
+            mail_module_1.MailModule,
             tenant_module_1.TenantModule,
             customer_module_1.CustomerModule,
-            auth_module_1.AuthModule,
             quote_module_1.QuoteModule,
             portal_module_1.PortalModule,
             job_module_1.JobModule,
@@ -56,6 +64,12 @@ exports.AppModule = AppModule = __decorate([
             service_request_module_1.ServiceRequestModule,
             maintenance_module_1.MaintenanceModule,
             notification_module_1.NotificationModule,
+            audit_log_module_1.AuditLogModule,
+            settings_module_1.SettingsModule,
+            department_module_1.DepartmentModule,
+            user_module_1.UserModule,
+            announcement_module_1.AnnouncementModule,
+            internal_ticket_module_1.InternalTicketModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

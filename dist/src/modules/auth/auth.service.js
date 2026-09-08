@@ -89,6 +89,9 @@ let AuthService = class AuthService {
         if (!isMatch) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
+        if (user.requiresPasswordReset) {
+            throw new common_1.ForbiddenException('PASSWORD_RESET_REQUIRED');
+        }
         const alg = 'HS256';
         const jwt = await new jose_1.SignJWT({ sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId })
             .setProtectedHeader({ alg })
@@ -100,6 +103,31 @@ let AuthService = class AuthService {
             user: result,
             accessToken: jwt,
         };
+    }
+    async resetTempPassword(email, tempPassword, newPassword) {
+        const user = await this.prisma.user.findUnique({
+            where: { email },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException('Invalid credentials');
+        }
+        if (!user.requiresPasswordReset) {
+            throw new common_1.ConflictException('User does not require a password reset');
+        }
+        const isMatch = await bcrypt.compare(tempPassword, user.passwordHash);
+        if (!isMatch) {
+            throw new common_1.UnauthorizedException('Invalid temporary password');
+        }
+        const salt = await bcrypt.genSalt(10);
+        const newPasswordHash = await bcrypt.hash(newPassword, salt);
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                passwordHash: newPasswordHash,
+                requiresPasswordReset: false,
+            },
+        });
+        return { message: 'Password reset successfully. You may now log in.' };
     }
 };
 exports.AuthService = AuthService;

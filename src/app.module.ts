@@ -16,10 +16,18 @@ import { ImportModule } from './modules/import/import.module';
 import { ServiceRequestModule } from './modules/service-request/service-request.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { MailModule } from './core/mail/mail.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { JwtGuard } from './core/auth/jwt.guard';
 import { RolesGuard } from './core/auth/roles.guard';
+
+import { UserModule } from './modules/user/user.module';
+import { DepartmentModule } from './modules/department/department.module';
+import { AnnouncementModule } from './modules/announcement/announcement.module';
+import { InternalTicketModule } from './modules/internal-ticket/internal-ticket.module';
 
 @Module({
   imports: [
@@ -27,14 +35,15 @@ import { RolesGuard } from './core/auth/roles.guard';
     ScheduleModule.forRoot(),
     BullModule.forRoot({
       redis: {
-        host: 'localhost',
-        port: 6379,
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
       },
     }),
     PrismaModule,
+    AuthModule,
+    MailModule,
     TenantModule,
     CustomerModule,
-    AuthModule,
     QuoteModule,
     PortalModule,
     JobModule,
@@ -44,6 +53,12 @@ import { RolesGuard } from './core/auth/roles.guard';
     ServiceRequestModule,
     MaintenanceModule,
     NotificationModule,
+    AuditLogModule,
+    SettingsModule,
+    DepartmentModule,
+    UserModule,
+    AnnouncementModule,
+    InternalTicketModule,
   ],
   controllers: [AppController],
   providers: [

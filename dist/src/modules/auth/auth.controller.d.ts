@@ -12,6 +12,9 @@ export declare class AuthController {
         phone: string | null;
         firstName: string;
         lastName: string;
+        status: import("@prisma/client").$Enums.UserStatus;
+        requiresPasswordReset: boolean;
+        departmentId: string | null;
         tenantId: string | null;
         role: import("@prisma/client").$Enums.Role | null;
     }>;
@@ -24,9 +27,15 @@ export declare class AuthController {
             phone: string | null;
             firstName: string;
             lastName: string;
+            status: import("@prisma/client").$Enums.UserStatus;
+            requiresPasswordReset: boolean;
+            departmentId: string | null;
             tenantId: string | null;
             role: import("@prisma/client").$Enums.Role | null;
         };
         accessToken: string;
+    }>;
+    resetTempPassword(body: any): Promise<{
+        message: string;
     }>;
 }

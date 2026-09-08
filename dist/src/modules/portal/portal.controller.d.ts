@@ -9,9 +9,9 @@ export declare class PortalController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.ServiceRequestStatus;
         description: string;
         assetId: string | null;
         jobId: string | null;
@@ -29,9 +29,9 @@ export declare class PortalController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.QuoteStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.QuoteStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
     }>;
@@ -39,9 +39,9 @@ export declare class PortalController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.QuoteStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.QuoteStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
     }>;
@@ -58,9 +58,9 @@ export declare class PortalController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import("@prisma/client").$Enums.InvoiceStatus;
         tenantId: string;
         customerRecordId: string;
-        status: import("@prisma/client").$Enums.InvoiceStatus;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
         jobId: string | null;
@@ -87,9 +87,9 @@ export declare class PortalController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            status: import("@prisma/client").$Enums.QuoteStatus;
             tenantId: string;
             customerRecordId: string;
-            status: import("@prisma/client").$Enums.QuoteStatus;
             title: string;
             amount: import("@prisma/client/runtime/library").Decimal;
         }[];
@@ -97,9 +97,9 @@ export declare class PortalController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
             tenantId: string;
             customerRecordId: string;
-            status: import("@prisma/client").$Enums.InvoiceStatus;
             title: string;
             amount: import("@prisma/client/runtime/library").Decimal;
             jobId: string | null;
@@ -110,9 +110,9 @@ export declare class PortalController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            status: import("@prisma/client").$Enums.JobStatus;
             tenantId: string;
             customerRecordId: string;
-            status: import("@prisma/client").$Enums.JobStatus;
             title: string;
             description: string | null;
             quoteId: string | null;
@@ -126,9 +126,9 @@ export declare class PortalController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            status: import("@prisma/client").$Enums.AssetStatus;
             tenantId: string;
             customerRecordId: string;
-            status: import("@prisma/client").$Enums.AssetStatus;
             manufacturer: string | null;
             modelNumber: string | null;
             serialNumber: string | null;

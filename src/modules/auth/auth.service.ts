@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -58,6 +58,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.requiresPasswordReset) {
+      throw new ForbiddenException('PASSWORD_RESET_REQUIRED');
+    }
+
     // Generate JWT with jose
     const alg = 'HS256';
     const jwt = await new SignJWT({ sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId })
@@ -72,5 +76,37 @@ export class AuthService {
       user: result,
       accessToken: jwt,
     };
+  }
+
+  async resetTempPassword(email: string, tempPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.requiresPasswordReset) {
+      throw new ConflictException('User does not require a password reset');
+    }
+
+    const isMatch = await bcrypt.compare(tempPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new UnauthorizedException('Invalid temporary password');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: newPasswordHash,
+        requiresPasswordReset: false,
+      },
+    });
+
+    return { message: 'Password reset successfully. You may now log in.' };
   }
 }
