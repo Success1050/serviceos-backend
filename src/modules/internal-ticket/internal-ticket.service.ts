@@ -28,7 +28,7 @@ export class InternalTicketService {
 
     // Notify HQ
     const hqUsers = await this.prisma.user.findMany({
-      where: { tenantId: tenant.parentId, role: { in: ['TENANT_OWNER', 'TENANT_ADMIN'] } },
+      where: { tenantId: tenant.parentId },
     });
 
     for (const hqUser of hqUsers) {

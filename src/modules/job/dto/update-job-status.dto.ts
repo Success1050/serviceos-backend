@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty } from 'class-validator';
+﻿import { IsEnum, IsNotEmpty } from 'class-validator';
 import { JobStatus } from '@prisma/client';
 
 export class UpdateJobStatusDto {

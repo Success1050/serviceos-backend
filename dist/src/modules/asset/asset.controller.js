@@ -17,8 +17,7 @@ const common_1 = require("@nestjs/common");
 const asset_service_1 = require("./asset.service");
 const create_asset_dto_1 = require("./dto/create-asset.dto");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
-const client_1 = require("@prisma/client");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let AssetController = class AssetController {
     assetService;
     constructor(assetService) {
@@ -38,7 +37,7 @@ let AssetController = class AssetController {
 exports.AssetController = AssetController;
 __decorate([
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.TECHNICIAN),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -47,7 +46,7 @@ __decorate([
 ], AssetController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.TECHNICIAN),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),

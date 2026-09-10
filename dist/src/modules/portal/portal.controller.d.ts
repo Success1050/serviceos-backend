@@ -113,8 +113,8 @@ export declare class PortalController {
             status: import("@prisma/client").$Enums.JobStatus;
             tenantId: string;
             customerRecordId: string;
-            title: string;
             description: string | null;
+            title: string;
             quoteId: string | null;
             assignedTechnicianId: string | null;
             scheduledAt: Date | null;

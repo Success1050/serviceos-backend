@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+﻿import { Injectable, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -47,6 +47,7 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
+      include: { role: true }
     });
 
     if (!user) {
@@ -64,7 +65,13 @@ export class AuthService {
 
     // Generate JWT with jose
     const alg = 'HS256';
-    const jwt = await new SignJWT({ sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId })
+    const jwt = await new SignJWT({ 
+      sub: user.id, 
+      email: user.email, 
+      tenantId: user.tenantId,
+      permissions: user.role?.permissions || [],
+      directPermissions: user.directPermissions || []
+    })
       .setProtectedHeader({ alg })
       .setIssuedAt()
       .setExpirationTime('24h')

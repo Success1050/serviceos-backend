@@ -1,8 +1,8 @@
-import { Controller, Post, Get, Body, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Post, Get, Body, BadRequestException } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('assets')
@@ -10,7 +10,7 @@ export class AssetController {
   constructor(private readonly assetService: AssetService) {}
 
   @Post()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.TECHNICIAN)
+  @Permissions('admin_access')
   async create(
     @CurrentUser() user: any,
     @Body() createAssetDto: CreateAssetDto,
@@ -20,7 +20,7 @@ export class AssetController {
   }
 
   @Get()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.TECHNICIAN)
+  @Permissions('admin_access')
   async findAll(@CurrentUser() user: any) {
     if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
     return this.assetService.getAssets(user.tenantId);

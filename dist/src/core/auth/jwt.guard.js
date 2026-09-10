@@ -43,8 +43,9 @@ let JwtGuard = class JwtGuard {
             request.user = {
                 id: payload.sub,
                 email: payload.email,
-                role: payload.role,
                 tenantId: payload.tenantId,
+                permissions: payload.permissions || [],
+                directPermissions: payload.directPermissions || [],
                 relationshipId: payload.relationshipId,
                 phone: payload.phone,
             };

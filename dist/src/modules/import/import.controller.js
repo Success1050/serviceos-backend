@@ -19,8 +19,7 @@ const analyze_import_dto_1 = require("./dto/analyze-import.dto");
 const preview_import_dto_1 = require("./dto/preview-import.dto");
 const execute_import_dto_1 = require("./dto/execute-import.dto");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
-const client_1 = require("@prisma/client");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let ImportController = class ImportController {
     importService;
     constructor(importService) {
@@ -43,7 +42,7 @@ let ImportController = class ImportController {
 exports.ImportController = ImportController;
 __decorate([
     (0, common_1.Post)('analyze'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.SALES),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [analyze_import_dto_1.AnalyzeImportDto]),
@@ -51,7 +50,7 @@ __decorate([
 ], ImportController.prototype, "analyze", null);
 __decorate([
     (0, common_1.Post)('preview'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.SALES),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -60,7 +59,7 @@ __decorate([
 ], ImportController.prototype, "preview", null);
 __decorate([
     (0, common_1.Post)('execute'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.SALES),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),

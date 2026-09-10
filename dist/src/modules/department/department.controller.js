@@ -16,7 +16,7 @@ exports.DepartmentController = void 0;
 const common_1 = require("@nestjs/common");
 const department_service_1 = require("./department.service");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let DepartmentController = class DepartmentController {
     departmentService;
     constructor(departmentService) {
@@ -35,7 +35,7 @@ let DepartmentController = class DepartmentController {
 exports.DepartmentController = DepartmentController;
 __decorate([
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)('TENANT_OWNER', 'TENANT_ADMIN'),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, common_1.Body)('name')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
@@ -51,7 +51,7 @@ __decorate([
 ], DepartmentController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    (0, roles_decorator_1.Roles)('TENANT_OWNER', 'TENANT_ADMIN'),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),

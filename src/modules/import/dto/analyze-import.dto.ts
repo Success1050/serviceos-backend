@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty } from 'class-validator';
+﻿import { IsArray, IsNotEmpty } from 'class-validator';
 
 export class AnalyzeImportDto {
   @IsArray()

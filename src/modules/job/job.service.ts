@@ -24,7 +24,7 @@ export class JobService {
         where: { id: createJobDto.assignedTechnicianId },
       });
 
-      if (!tech || tech.tenantId !== tenantId || tech.role !== Role.TECHNICIAN) {
+      if (!tech || tech.tenantId !== tenantId) {
         throw new ForbiddenException('Invalid technician assigned');
       }
     }
@@ -47,7 +47,7 @@ export class JobService {
     const whereClause: any = { tenantId };
 
     // If the user is a technician, they can ONLY see their own jobs
-    if (user.role === Role.TECHNICIAN) {
+    if (user.permissions?.includes('technician_access')) {
       whereClause.assignedTechnicianId = user.id;
     }
 
@@ -75,7 +75,7 @@ export class JobService {
     }
 
     // Technicians can only update their own jobs
-    if (user.role === Role.TECHNICIAN && job.assignedTechnicianId !== user.id) {
+    if (user.permissions?.includes('technician_access') && job.assignedTechnicianId !== user.id) {
       throw new ForbiddenException('You can only update your own assigned jobs');
     }
 

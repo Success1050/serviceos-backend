@@ -1,8 +1,8 @@
-import { Controller, Post, Body, Param, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Post, Body, Param, BadRequestException } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('customers')
@@ -10,7 +10,7 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Post()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   async create(
     @CurrentUser() user: any,
     @Body() createCustomerDto: CreateCustomerDto,
@@ -22,7 +22,7 @@ export class CustomerController {
   }
 
   @Post(':id/invite')
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   async invite(
     @CurrentUser() user: any,
     @Param('id') customerId: string,

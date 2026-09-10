@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+﻿import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { jwtVerify } from 'jose';
@@ -35,13 +35,13 @@ export class JwtGuard implements CanActivate {
 
     try {
       const { payload } = await jwtVerify(token, this.jwtSecret);
-      // Attach the payload to the request object so our decorators can access it
       request.user = {
         id: payload.sub,
         email: payload.email,
-        role: payload.role,
         tenantId: payload.tenantId,
-        relationshipId: payload.relationshipId, // Required for Customer Portal
+        permissions: payload.permissions || [],
+        directPermissions: payload.directPermissions || [],
+        relationshipId: payload.relationshipId,
         phone: payload.phone,
       };
     } catch (err) {

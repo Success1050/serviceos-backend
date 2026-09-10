@@ -16,7 +16,7 @@ exports.PortalController = void 0;
 const common_1 = require("@nestjs/common");
 const portal_service_1 = require("./portal.service");
 const public_decorator_1 = require("../../core/decorators/public.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
 const request_otp_dto_1 = require("./dto/request-otp.dto");
 const verify_otp_dto_1 = require("./dto/verify-otp.dto");
@@ -57,7 +57,7 @@ let PortalController = class PortalController {
 exports.PortalController = PortalController;
 __decorate([
     (0, common_1.Post)('service-requests'),
-    (0, roles_decorator_1.Roles)('CUSTOMER'),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, common_1.Param)('slug')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __param(2, (0, common_1.Body)()),
@@ -112,7 +112,7 @@ __decorate([
 ], PortalController.prototype, "verifyOtp", null);
 __decorate([
     (0, common_1.Get)('dashboard'),
-    (0, roles_decorator_1.Roles)('CUSTOMER'),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, common_1.Param)('slug')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),

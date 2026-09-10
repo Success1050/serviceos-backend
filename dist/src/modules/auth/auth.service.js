@@ -81,6 +81,7 @@ let AuthService = class AuthService {
     async login(loginDto) {
         const user = await this.prisma.user.findUnique({
             where: { email: loginDto.email },
+            include: { role: true }
         });
         if (!user) {
             throw new common_1.UnauthorizedException('Invalid credentials');
@@ -93,7 +94,13 @@ let AuthService = class AuthService {
             throw new common_1.ForbiddenException('PASSWORD_RESET_REQUIRED');
         }
         const alg = 'HS256';
-        const jwt = await new jose_1.SignJWT({ sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId })
+        const jwt = await new jose_1.SignJWT({
+            sub: user.id,
+            email: user.email,
+            tenantId: user.tenantId,
+            permissions: user.role?.permissions || [],
+            directPermissions: user.directPermissions || []
+        })
             .setProtectedHeader({ alg })
             .setIssuedAt()
             .setExpirationTime('24h')

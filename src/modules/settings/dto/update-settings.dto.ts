@@ -1,4 +1,4 @@
-import { IsOptional, IsObject } from 'class-validator';
+﻿import { IsOptional, IsObject } from 'class-validator';
 
 export class UpdateSettingsDto {
   @IsOptional()

@@ -19,10 +19,21 @@ export declare class AuthService {
         requiresPasswordReset: boolean;
         departmentId: string | null;
         tenantId: string | null;
-        role: import("@prisma/client").$Enums.Role | null;
+        roleId: string | null;
+        directPermissions: string[];
     }>;
     login(loginDto: LoginDto): Promise<{
         user: {
+            role: {
+                name: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                tenantId: string | null;
+                permissions: string[];
+                description: string | null;
+                isGlobal: boolean;
+            } | null;
             id: string;
             createdAt: Date;
             updatedAt: Date;
@@ -34,7 +45,8 @@ export declare class AuthService {
             requiresPasswordReset: boolean;
             departmentId: string | null;
             tenantId: string | null;
-            role: import("@prisma/client").$Enums.Role | null;
+            roleId: string | null;
+            directPermissions: string[];
         };
         accessToken: string;
     }>;

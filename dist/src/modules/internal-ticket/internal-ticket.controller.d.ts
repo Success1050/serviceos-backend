@@ -8,8 +8,8 @@ export declare class InternalTicketController {
         updatedAt: Date;
         status: import("@prisma/client").$Enums.InternalTicketStatus;
         tenantId: string;
-        title: string;
         description: string;
+        title: string;
         authorId: string;
     }>;
     findAll(user: any): Promise<({
@@ -23,8 +23,8 @@ export declare class InternalTicketController {
         updatedAt: Date;
         status: import("@prisma/client").$Enums.InternalTicketStatus;
         tenantId: string;
-        title: string;
         description: string;
+        title: string;
         authorId: string;
     })[]>;
     updateStatus(id: string, status: any, user: any): Promise<{
@@ -33,8 +33,8 @@ export declare class InternalTicketController {
         updatedAt: Date;
         status: import("@prisma/client").$Enums.InternalTicketStatus;
         tenantId: string;
-        title: string;
         description: string;
+        title: string;
         authorId: string;
     }>;
 }

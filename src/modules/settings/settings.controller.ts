@@ -1,8 +1,8 @@
-import { Controller, Get, Patch, Body, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Get, Patch, Body, BadRequestException } from '@nestjs/common';
 import { SettingsService } from './settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('settings')
@@ -10,14 +10,14 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER)
+  @Permissions('admin_access')
   async getSettings(@CurrentUser() user: any) {
     if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
     return this.settingsService.getSettings(user.tenantId);
   }
 
   @Patch()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN)
+  @Permissions('admin_access')
   async updateSettings(
     @CurrentUser() user: any,
     @Body() updateDto: UpdateSettingsDto,

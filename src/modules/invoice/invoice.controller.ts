@@ -1,16 +1,15 @@
-import { Controller, Post, Get, Patch, Body, Param, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Post, Get, Patch, Body, Param, BadRequestException } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 
 @Controller('invoices')
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(private readonly invoiceService: InvoiceService) { }
 
   @Post()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Permissions('admin_access')
   async create(
     @CurrentUser() user: any,
     @Body() createInvoiceDto: CreateInvoiceDto,
@@ -20,14 +19,14 @@ export class InvoiceController {
   }
 
   @Get()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Permissions('admin_access')
   async findAll(@CurrentUser() user: any) {
     if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
     return this.invoiceService.getInvoices(user.tenantId);
   }
 
   @Post(':id/send')
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Permissions('admin_access')
   async send(
     @CurrentUser() user: any,
     @Param('id') invoiceId: string,
@@ -37,7 +36,7 @@ export class InvoiceController {
   }
 
   @Patch(':id/pay')
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Permissions('admin_access')
   async markAsPaid(
     @CurrentUser() user: any,
     @Param('id') invoiceId: string,

@@ -12,8 +12,8 @@ export declare class InternalTicketService {
         updatedAt: Date;
         status: import("@prisma/client").$Enums.InternalTicketStatus;
         tenantId: string;
-        title: string;
         description: string;
+        title: string;
         authorId: string;
     }>;
     getTickets(user: any): Promise<({
@@ -27,8 +27,8 @@ export declare class InternalTicketService {
         updatedAt: Date;
         status: import("@prisma/client").$Enums.InternalTicketStatus;
         tenantId: string;
-        title: string;
         description: string;
+        title: string;
         authorId: string;
     })[]>;
     updateTicketStatus(user: any, ticketId: string, status: any): Promise<{
@@ -37,8 +37,8 @@ export declare class InternalTicketService {
         updatedAt: Date;
         status: import("@prisma/client").$Enums.InternalTicketStatus;
         tenantId: string;
-        title: string;
         description: string;
+        title: string;
         authorId: string;
     }>;
 }

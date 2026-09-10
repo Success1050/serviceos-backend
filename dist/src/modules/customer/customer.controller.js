@@ -17,8 +17,7 @@ const common_1 = require("@nestjs/common");
 const customer_service_1 = require("./customer.service");
 const create_customer_dto_1 = require("./dto/create-customer.dto");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
-const client_1 = require("@prisma/client");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let CustomerController = class CustomerController {
     customerService;
     constructor(customerService) {
@@ -40,7 +39,7 @@ let CustomerController = class CustomerController {
 exports.CustomerController = CustomerController;
 __decorate([
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.SALES),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -49,7 +48,7 @@ __decorate([
 ], CustomerController.prototype, "create", null);
 __decorate([
     (0, common_1.Post)(':id/invite'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.SALES),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),

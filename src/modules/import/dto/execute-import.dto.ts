@@ -1,4 +1,4 @@
-import { IsArray, IsEnum, IsNotEmpty, IsObject } from 'class-validator';
+﻿import { IsArray, IsEnum, IsNotEmpty, IsObject } from 'class-validator';
 
 export enum DuplicateRule {
   SKIP = 'SKIP',

@@ -16,7 +16,7 @@ exports.InternalTicketController = void 0;
 const common_1 = require("@nestjs/common");
 const internal_ticket_service_1 = require("./internal-ticket.service");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let InternalTicketController = class InternalTicketController {
     internalTicketService;
     constructor(internalTicketService) {
@@ -50,7 +50,7 @@ __decorate([
 ], InternalTicketController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
-    (0, roles_decorator_1.Roles)('TENANT_OWNER', 'TENANT_ADMIN'),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('status')),
     __param(2, (0, current_user_decorator_1.CurrentUser)()),

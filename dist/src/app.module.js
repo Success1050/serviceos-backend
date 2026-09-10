@@ -31,11 +31,13 @@ const mail_module_1 = require("./core/mail/mail.module");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const jwt_guard_1 = require("./core/auth/jwt.guard");
-const roles_guard_1 = require("./core/auth/roles.guard");
+const permissions_guard_1 = require("./core/auth/permissions.guard");
 const user_module_1 = require("./modules/user/user.module");
 const department_module_1 = require("./modules/department/department.module");
 const announcement_module_1 = require("./modules/announcement/announcement.module");
 const internal_ticket_module_1 = require("./modules/internal-ticket/internal-ticket.module");
+const role_module_1 = require("./modules/role/role.module");
+const analytics_module_1 = require("./modules/analytics/analytics.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -67,9 +69,11 @@ exports.AppModule = AppModule = __decorate([
             audit_log_module_1.AuditLogModule,
             settings_module_1.SettingsModule,
             department_module_1.DepartmentModule,
-            user_module_1.UserModule,
             announcement_module_1.AnnouncementModule,
             internal_ticket_module_1.InternalTicketModule,
+            role_module_1.RoleModule,
+            user_module_1.UserModule,
+            analytics_module_1.AnalyticsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [
@@ -80,7 +84,7 @@ exports.AppModule = AppModule = __decorate([
             },
             {
                 provide: core_1.APP_GUARD,
-                useClass: roles_guard_1.RolesGuard,
+                useClass: permissions_guard_1.PermissionsGuard,
             },
         ],
     })

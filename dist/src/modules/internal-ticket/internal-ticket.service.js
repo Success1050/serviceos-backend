@@ -37,7 +37,7 @@ let InternalTicketService = class InternalTicketService {
             },
         });
         const hqUsers = await this.prisma.user.findMany({
-            where: { tenantId: tenant.parentId, role: { in: ['TENANT_OWNER', 'TENANT_ADMIN'] } },
+            where: { tenantId: tenant.parentId },
         });
         for (const hqUser of hqUsers) {
             await this.notificationService.sendToUser(tenant.parentId, hqUser.id, `New ticket from branch: ${tenant.name}`, `Ticket "${ticket.title}" needs attention.`, 'INFO', `/internal-tickets/${ticket.id}`);

@@ -1,7 +1,7 @@
-import { Controller, Get, Patch, Post, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Get, Patch, Post, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
 import { PortalService } from './portal.service';
 import { Public } from '../../core/decorators/public.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -12,7 +12,7 @@ export class PortalController {
   constructor(private readonly portalService: PortalService) {}
 
   @Post('service-requests')
-  @Roles('CUSTOMER')
+  @Permissions('admin_access')
   async createServiceRequest(
     @Param('slug') slug: string,
     @CurrentUser() user: any,
@@ -70,7 +70,7 @@ export class PortalController {
   }
 
   @Get('dashboard')
-  @Roles('CUSTOMER')
+  @Permissions('admin_access')
   async getDashboard(
     @Param('slug') slug: string,
     @CurrentUser() user: any,

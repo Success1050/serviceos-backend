@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsInt, IsOptional, IsString, IsDateString } from 'class-validator';
+﻿import { IsNotEmpty, IsInt, IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class CreateMaintenanceScheduleDto {
   @IsString()

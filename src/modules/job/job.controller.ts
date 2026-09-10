@@ -1,9 +1,9 @@
-import { Controller, Post, Get, Patch, Body, Param, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Post, Get, Patch, Body, Param, BadRequestException } from '@nestjs/common';
 import { JobService } from './job.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('jobs')
@@ -11,7 +11,7 @@ export class JobController {
   constructor(private readonly jobService: JobService) {}
 
   @Post()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER)
+  @Permissions('admin_access')
   async create(
     @CurrentUser() user: any,
     @Body() createJobDto: CreateJobDto,

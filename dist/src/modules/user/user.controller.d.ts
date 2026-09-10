@@ -26,7 +26,8 @@ export declare class UserController {
         requiresPasswordReset: boolean;
         departmentId: string | null;
         tenantId: string | null;
-        role: import("@prisma/client").$Enums.Role | null;
+        roleId: string | null;
+        directPermissions: string[];
     })[]>;
     approveStaff(userId: string, currentUser: any): Promise<{
         message: string;

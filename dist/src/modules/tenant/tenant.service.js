@@ -54,7 +54,7 @@ let TenantService = class TenantService {
                 where: { id: user.id },
                 data: {
                     tenantId: tenant.id,
-                    role: 'TENANT_OWNER',
+                    directPermissions: ['admin_access'],
                 },
             });
             return tenant;

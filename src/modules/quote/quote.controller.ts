@@ -1,8 +1,8 @@
-import { Controller, Post, Get, Body, Param, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Post, Get, Body, Param, BadRequestException } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('quotes')
@@ -10,7 +10,7 @@ export class QuoteController {
   constructor(private readonly quoteService: QuoteService) {}
 
   @Post()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   async create(
     @CurrentUser() user: any,
     @Body() createQuoteDto: CreateQuoteDto,
@@ -22,7 +22,7 @@ export class QuoteController {
   }
 
   @Get()
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   async findAll(@CurrentUser() user: any) {
     if (!user.tenantId) {
       throw new BadRequestException('User does not belong to a tenant');
@@ -31,7 +31,7 @@ export class QuoteController {
   }
 
   @Post(':id/send')
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   async send(
     @CurrentUser() user: any,
     @Param('id') quoteId: string,

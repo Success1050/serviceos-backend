@@ -17,8 +17,7 @@ const common_1 = require("@nestjs/common");
 const service_request_service_1 = require("./service-request.service");
 const update_service_request_status_dto_1 = require("./dto/update-service-request-status.dto");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
-const client_1 = require("@prisma/client");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let ServiceRequestController = class ServiceRequestController {
     serviceRequestService;
     constructor(serviceRequestService) {
@@ -38,7 +37,7 @@ let ServiceRequestController = class ServiceRequestController {
 exports.ServiceRequestController = ServiceRequestController;
 __decorate([
     (0, common_1.Get)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.TECHNICIAN),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -46,7 +45,7 @@ __decorate([
 ], ServiceRequestController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.TECHNICIAN),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),

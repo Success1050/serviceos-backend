@@ -37,6 +37,7 @@ model Tenant {
   notifications         Notification[]
   announcements         Announcement[]
   internalTickets       InternalTicket[]
+  roles                 Role[]
 
   settings TenantSettings?
   auditLogs             AuditLog[]
@@ -122,14 +123,19 @@ enum UserStatus {
   SUSPENDED
 }
 
-enum Role {
-  PLATFORM_ADMIN
-  TENANT_OWNER
-  TENANT_ADMIN
-  MANAGER
-  SALES
-  TECHNICIAN
-  ACCOUNTANT
+model Role {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isGlobal    Boolean  @default(false)
+  permissions String[]
+  tenantId    String?
+
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users       User[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model User {
@@ -148,7 +154,10 @@ model User {
   tenantId String? // Nullable because Platform Admin might not belong to a tenant
   tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  role Role?
+  roleId            String?
+  role              Role?    @relation(fields: [roleId], references: [id])
+  directPermissions String[] // Direct user-level permissions overriding/adding to Role
+  
   assignedJobs    Job[]
   notifications   Notification[]
   internalTickets InternalTicket[]

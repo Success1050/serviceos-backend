@@ -1,10 +1,10 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+﻿import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
 import { ImportService } from './import.service';
 import { AnalyzeImportDto } from './dto/analyze-import.dto';
 import { PreviewImportDto } from './dto/preview-import.dto';
 import { ExecuteImportDto } from './dto/execute-import.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { Roles } from '../../core/decorators/roles.decorator';
+import { Permissions } from '../../core/decorators/permissions.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('import')
@@ -12,13 +12,13 @@ export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
   @Post('analyze')
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   analyze(@Body() analyzeDto: AnalyzeImportDto) {
     return this.importService.analyzeColumns(analyzeDto);
   }
 
   @Post('preview')
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   async preview(
     @CurrentUser() user: any,
     @Body() previewDto: PreviewImportDto,
@@ -28,7 +28,7 @@ export class ImportController {
   }
 
   @Post('execute')
-  @Roles(Role.TENANT_OWNER, Role.TENANT_ADMIN, Role.MANAGER, Role.SALES)
+  @Permissions('admin_access')
   async execute(
     @CurrentUser() user: any,
     @Body() executeDto: ExecuteImportDto,

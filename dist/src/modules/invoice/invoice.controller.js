@@ -17,8 +17,7 @@ const common_1 = require("@nestjs/common");
 const invoice_service_1 = require("./invoice.service");
 const create_invoice_dto_1 = require("./dto/create-invoice.dto");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
-const client_1 = require("@prisma/client");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let InvoiceController = class InvoiceController {
     invoiceService;
     constructor(invoiceService) {
@@ -48,7 +47,7 @@ let InvoiceController = class InvoiceController {
 exports.InvoiceController = InvoiceController;
 __decorate([
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.ACCOUNTANT),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -57,7 +56,7 @@ __decorate([
 ], InvoiceController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.ACCOUNTANT),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -65,7 +64,7 @@ __decorate([
 ], InvoiceController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Post)(':id/send'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.ACCOUNTANT),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -74,7 +73,7 @@ __decorate([
 ], InvoiceController.prototype, "send", null);
 __decorate([
     (0, common_1.Patch)(':id/pay'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.ACCOUNTANT),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),

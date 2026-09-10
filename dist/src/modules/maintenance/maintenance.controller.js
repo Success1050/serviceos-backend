@@ -17,8 +17,7 @@ const common_1 = require("@nestjs/common");
 const maintenance_service_1 = require("./maintenance.service");
 const create_schedule_dto_1 = require("./dto/create-schedule.dto");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
-const roles_decorator_1 = require("../../core/decorators/roles.decorator");
-const client_1 = require("@prisma/client");
+const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let MaintenanceController = class MaintenanceController {
     maintenanceService;
     constructor(maintenanceService) {
@@ -44,7 +43,7 @@ let MaintenanceController = class MaintenanceController {
 exports.MaintenanceController = MaintenanceController;
 __decorate([
     (0, common_1.Get)('upcoming'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.TECHNICIAN),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Query)('days')),
     __metadata("design:type", Function),
@@ -53,7 +52,7 @@ __decorate([
 ], MaintenanceController.prototype, "getUpcoming", null);
 __decorate([
     (0, common_1.Post)('customers/:customerId'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.SALES),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('customerId')),
     __param(2, (0, common_1.Body)()),
@@ -63,7 +62,7 @@ __decorate([
 ], MaintenanceController.prototype, "createSchedule", null);
 __decorate([
     (0, common_1.Patch)(':id/complete-cycle'),
-    (0, roles_decorator_1.Roles)(client_1.Role.TENANT_OWNER, client_1.Role.TENANT_ADMIN, client_1.Role.MANAGER, client_1.Role.TECHNICIAN),
+    (0, permissions_decorator_1.Permissions)('admin_access'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
