@@ -20,6 +20,8 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { MailModule } from './core/mail/mail.module';
+import { WarehouseModule } from './modules/warehouse/warehouse.module';
+import { ExpenseModule } from './modules/expense/expense.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { JwtGuard } from './core/auth/jwt.guard';
@@ -56,6 +58,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     ServiceRequestModule,
     MaintenanceModule,
     NotificationModule,
+    WarehouseModule,
+    ExpenseModule,
     AuditLogModule,
     SettingsModule,
     DepartmentModule,

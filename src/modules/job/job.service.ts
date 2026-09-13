@@ -1,8 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
-import { Role } from '@prisma/client';
 
 @Injectable()
 export class JobService {
@@ -27,6 +26,16 @@ export class JobService {
       if (!tech || tech.tenantId !== tenantId) {
         throw new ForbiddenException('Invalid technician assigned');
       }
+
+      // Stage 22: Smart Scheduling Conflict Engine
+      if (createJobDto.scheduledAt) {
+        await this.checkSchedulingConflicts(
+          tenantId,
+          createJobDto.assignedTechnicianId,
+          new Date(createJobDto.scheduledAt),
+          createJobDto.estimatedDuration || 60,
+        );
+      }
     }
 
     // 3. Create job
@@ -39,6 +48,7 @@ export class JobService {
         quoteId: createJobDto.quoteId,
         assignedTechnicianId: createJobDto.assignedTechnicianId,
         scheduledAt: createJobDto.scheduledAt ? new Date(createJobDto.scheduledAt) : null,
+        estimatedDuration: createJobDto.estimatedDuration || 60,
       },
     });
   }
@@ -51,7 +61,7 @@ export class JobService {
       whereClause.assignedTechnicianId = user.id;
     }
 
-    return this.prisma.job.findMany({
+    const jobs = await this.prisma.job.findMany({
       where: whereClause,
       include: {
         customerRecord: {
@@ -63,6 +73,13 @@ export class JobService {
       },
       orderBy: { scheduledAt: 'asc' },
     });
+
+    // Technicians should never see the completionOtp (customer provides it)
+    if (user.permissions?.includes('technician_access')) {
+      return jobs.map(({ completionOtp, ...rest }) => rest);
+    }
+
+    return jobs;
   }
 
   async updateJobStatus(tenantId: string, jobId: string, updateDto: UpdateJobStatusDto, user: any) {
@@ -80,17 +97,86 @@ export class JobService {
     }
 
     const data: any = { status: updateDto.status };
+    const now = new Date();
 
-    if (updateDto.status === 'IN_PROGRESS' && !job.startedAt) {
-      data.startedAt = new Date();
-    }
-    if (updateDto.status === 'COMPLETED' && !job.completedAt) {
-      data.completedAt = new Date();
+    // Stage 22 & 23: Time Tracking & OTP Logic
+    if (updateDto.status === 'EN_ROUTE' && job.status !== 'EN_ROUTE') {
+      data.enRouteAt = now;
+    } else if (updateDto.status === 'IN_PROGRESS' && job.status !== 'IN_PROGRESS') {
+      data.startedAt = now;
+      
+      // Stage 23: Uber-style OTP Generation
+      const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit PIN
+      data.completionOtp = otp;
+      data.completionOtpExpiresAt = new Date(now.getTime() + 24 * 60 * 60000); // 24 hours
+      
+      // In a real scenario, trigger NotificationService/SMS here:
+      console.log(`[STAGE 23 - OTP GENERATED] Job ${jobId} requires OTP: ${otp} for completion.`);
+      
+    } else if (updateDto.status === 'COMPLETED' && job.status !== 'COMPLETED') {
+      // Stage 23: OTP Verification
+      if (!job.completionOtp) {
+        throw new ForbiddenException('Job cannot be completed because no OTP was generated.');
+      }
+      if (updateDto.otp !== job.completionOtp) {
+        throw new ForbiddenException('Invalid completion OTP. Cannot close job without customer verification.');
+      }
+      if (job.completionOtpExpiresAt && job.completionOtpExpiresAt < now) {
+        throw new ForbiddenException('OTP has expired.');
+      }
+      
+      data.completedAt = now;
+      data.completionOtp = null; // Clear OTP on successful use
     }
 
-    return this.prisma.job.update({
+    // Stage 22: Geolocation tracking
+    if (updateDto.latitude && updateDto.longitude && job.assignedTechnicianId) {
+      await this.prisma.user.update({
+        where: { id: job.assignedTechnicianId },
+        data: {
+          lastKnownLatitude: updateDto.latitude,
+          lastKnownLongitude: updateDto.longitude,
+          lastLocationUpdate: now,
+        }
+      });
+    }
+
+    const updatedJob = await this.prisma.job.update({
       where: { id: jobId },
       data,
     });
+
+    if (user.permissions?.includes('technician_access')) {
+      const { completionOtp, ...rest } = updatedJob;
+      return rest;
+    }
+
+    return updatedJob;
+  }
+
+  // --- Private Helpers ---
+
+  private async checkSchedulingConflicts(tenantId: string, technicianId: string, proposedStart: Date, estimatedDurationMinutes: number) {
+    const proposedEnd = new Date(proposedStart.getTime() + estimatedDurationMinutes * 60000);
+
+    // Find any overlapping jobs for this technician
+    const conflictingJobs = await this.prisma.job.findMany({
+      where: {
+        tenantId,
+        assignedTechnicianId: technicianId,
+        status: { in: ['SCHEDULED', 'EN_ROUTE', 'IN_PROGRESS'] },
+        scheduledAt: { not: null },
+      },
+    });
+
+    for (const job of conflictingJobs) {
+      const existingStart = job.scheduledAt!;
+      const existingEnd = new Date(existingStart.getTime() + (job.estimatedDuration || 60) * 60000);
+
+      // Overlap logic: Start A < End B && End A > Start B
+      if (proposedStart < existingEnd && proposedEnd > existingStart) {
+        throw new ConflictException(`Technician is already double-booked for another job at ${existingStart.toISOString()}`);
+      }
+    }
   }
 }

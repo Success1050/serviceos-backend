@@ -19,9 +19,9 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   // Hierarchy (V2)
-  parentId  String?
-  parent    Tenant?  @relation("TenantHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children  Tenant[] @relation("TenantHierarchy")
+  parentId String?
+  parent   Tenant?  @relation("TenantHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Tenant[] @relation("TenantHierarchy")
 
   // Relationships
   users                 User[]
@@ -38,9 +38,13 @@ model Tenant {
   announcements         Announcement[]
   internalTickets       InternalTicket[]
   roles                 Role[]
+  productCatalogs       ProductCatalog[]
+  warehouses            Warehouse[]
+  equipmentRequests     EquipmentRequest[]
+  expenseReceipts       ExpenseReceipt[]
 
-  settings TenantSettings?
-  auditLogs             AuditLog[]
+  settings  TenantSettings?
+  auditLogs AuditLog[]
 }
 
 enum AnnouncementPriority {
@@ -57,30 +61,30 @@ enum InternalTicketStatus {
 
 model Announcement {
   id            String               @id @default(uuid())
-  tenantId      String               // HQ Tenant
+  tenantId      String // HQ Tenant
   title         String
   content       String
   priority      AnnouncementPriority @default(NORMAL)
-  targetTenants String[]             // If empty, global. If populated, only these Tenant IDs see it.
-  
-  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  targetTenants String[] // If empty, global. If populated, only these Tenant IDs see it.
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model InternalTicket {
   id          String               @id @default(uuid())
-  tenantId    String               // Sub-Company Tenant
+  tenantId    String // Sub-Company Tenant
   authorId    String
   title       String
   description String
   status      InternalTicketStatus @default(OPEN)
 
-  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  author      User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TenantSettings {
@@ -112,9 +116,9 @@ model Department {
   id       String @id @default(uuid())
   tenantId String
   name     String
-  
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users    User[]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users  User[]
 }
 
 enum UserStatus {
@@ -131,11 +135,11 @@ model Role {
   permissions String[]
   tenantId    String?
 
-  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users       User[]
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users  User[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
@@ -146,8 +150,8 @@ model User {
   firstName    String
   lastName     String
 
-  status                UserStatus @default(ACTIVE)
-  requiresPasswordReset Boolean    @default(false)
+  status                UserStatus  @default(ACTIVE)
+  requiresPasswordReset Boolean     @default(false)
   departmentId          String?
   department            Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
@@ -157,14 +161,20 @@ model User {
   roleId            String?
   role              Role?    @relation(fields: [roleId], references: [id])
   directPermissions String[] // Direct user-level permissions overriding/adding to Role
-  
+
   assignedJobs    Job[]
   notifications   Notification[]
   internalTickets InternalTicket[]
+  virtualTruck    Warehouse?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  auditLogs      AuditLog[]
+  lastKnownLatitude  Float?
+  lastKnownLongitude Float?
+  lastLocationUpdate DateTime?
+  expenseReceipts    ExpenseReceipt[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  auditLogs AuditLog[]
 }
 
 // ------------------------------------------------------
@@ -205,12 +215,12 @@ model CustomerRecord {
   address String?
   city    String?
 
-  relationships CustomerTenantRelationship[]
-  quotes        Quote[]
-  jobs          Job[]
-  invoices      Invoice[]
-  assets        Asset[]
-  serviceRequests ServiceRequest[]
+  relationships        CustomerTenantRelationship[]
+  quotes               Quote[]
+  jobs                 Job[]
+  invoices             Invoice[]
+  assets               Asset[]
+  serviceRequests      ServiceRequest[]
   maintenanceSchedules MaintenanceSchedule[]
 
   createdAt DateTime @default(now())
@@ -280,28 +290,28 @@ enum InvitationStatus {
 // ------------------------------------------------------
 
 model Asset {
-  id               String         @id @default(uuid())
-  tenantId         String
-  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  name             String
-  manufacturer     String?
-  modelNumber      String?
-  serialNumber     String?
-  installDate      DateTime?
-  status           AssetStatus    @default(ACTIVE)
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name         String
+  manufacturer String?
+  modelNumber  String?
+  serialNumber String?
+  installDate  DateTime?
+  status       AssetStatus @default(ACTIVE)
 
   customerRecordId String
   customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
 
-  warrantyExpiresAt DateTime?
+  warrantyExpiresAt   DateTime?
   warrantyDocumentUrl String?
 
-  serviceRequests  ServiceRequest[]
+  serviceRequests      ServiceRequest[]
   maintenanceSchedules MaintenanceSchedule[]
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
 }
@@ -313,21 +323,21 @@ enum AssetStatus {
 }
 
 model Quote {
-  id               String         @id @default(uuid())
-  tenantId         String
-  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   customerRecordId String
   customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
 
-  title            String
-  amount           Decimal
-  status           QuoteStatus    @default(DRAFT)
+  title  String
+  amount Decimal
+  status QuoteStatus @default(DRAFT)
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  jobs             Job[]
+  jobs Job[]
 
   @@index([tenantId])
 }
@@ -341,25 +351,25 @@ enum QuoteStatus {
 }
 
 model Invoice {
-  id               String         @id @default(uuid())
-  tenantId         String
-  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  title            String
-  amount           Decimal
-  status           InvoiceStatus  @default(DRAFT)
-  
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title  String
+  amount Decimal
+  status InvoiceStatus @default(DRAFT)
+
   customerRecordId String
   customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
 
-  jobId            String?
-  job              Job?           @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
-  dueDate          DateTime?
-  paidAt           DateTime?
+  dueDate DateTime?
+  paidAt  DateTime?
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
 }
@@ -374,32 +384,37 @@ enum InvoiceStatus {
 }
 
 model Job {
-  id                   String         @id @default(uuid())
-  tenantId             String
-  tenant               Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  title                String
-  description          String?
-  status               JobStatus      @default(SCHEDULED)
-  
-  customerRecordId     String
-  customerRecord       CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
-  
-  quoteId              String?
-  quote                Quote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  status      JobStatus @default(SCHEDULED)
+
+  customerRecordId String
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  quoteId String?
+  quote   Quote?  @relation(fields: [quoteId], references: [id], onDelete: SetNull)
 
   assignedTechnicianId String?
-  assignedTechnician   User?          @relation(fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
+  assignedTechnician   User?   @relation(fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
 
-  scheduledAt          DateTime?
-  startedAt            DateTime?
-  completedAt          DateTime?
+  scheduledAt            DateTime?
+  estimatedDuration      Int       @default(60)
+  enRouteAt              DateTime?
+  startedAt              DateTime?
+  completedAt            DateTime?
+  completionOtp          String?
+  completionOtpExpiresAt DateTime?
 
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  invoices             Invoice[]
-  serviceRequests      ServiceRequest[]
+  invoices        Invoice[]
+  serviceRequests ServiceRequest[]
+  expenseReceipts ExpenseReceipt[]
 
   @@index([tenantId])
 }
@@ -413,24 +428,24 @@ enum JobStatus {
 }
 
 model ServiceRequest {
-  id               String               @id @default(uuid())
-  tenantId         String
-  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  description      String
-  status           ServiceRequestStatus @default(OPEN)
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  description String
+  status      ServiceRequestStatus @default(OPEN)
 
   customerRecordId String
-  customerRecord   CustomerRecord       @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
 
-  assetId          String?
-  asset            Asset?               @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  assetId String?
+  asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
-  jobId            String?
-  job              Job?                 @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
 }
@@ -453,25 +468,25 @@ model OtpCode {
 }
 
 model MaintenanceSchedule {
-  id               String            @id @default(uuid())
-  tenantId         String
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  title            String
-  intervalMonths   Int
-  nextDueDate      DateTime
-  status           ScheduleStatus    @default(ACTIVE)
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title          String
+  intervalMonths Int
+  nextDueDate    DateTime
+  status         ScheduleStatus @default(ACTIVE)
 
   customerRecordId String
-  customerRecord   CustomerRecord    @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
 
-  assetId          String?
-  asset            Asset?            @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  assetId String?
+  asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
-  currentJobId     String?
+  currentJobId String?
 
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([nextDueDate])
@@ -484,18 +499,18 @@ enum ScheduleStatus {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  title     String
-  message   String
-  type      String   @default("INFO")
-  isRead    Boolean  @default(false)
-  linkUrl   String?
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title   String
+  message String
+  type    String  @default("INFO")
+  isRead  Boolean @default(false)
+  linkUrl String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -508,21 +523,139 @@ model Notification {
 // ------------------------------------------------------
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  tenantId   String
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  action     String   // e.g., "UPDATE_SETTINGS", "DELETE_QUOTE"
-  entityType String   // e.g., "TenantSettings", "Quote"
-  entityId   String?  // ID of the affected record
-  details    Json?    // Stores what changed (before/after)
-  
-  createdAt  DateTime @default(now())
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action     String // e.g., "UPDATE_SETTINGS", "DELETE_QUOTE"
+  entityType String // e.g., "TenantSettings", "Quote"
+  entityId   String? // ID of the affected record
+  details    Json? // Stores what changed (before/after)
+
+  createdAt DateTime @default(now())
 
   @@index([tenantId])
   @@index([createdAt])
 }
 
+// ------------------------------------------------------
+// STAGE 23: INVENTORY & EXPENSES
+// ------------------------------------------------------
+
+model ProductCatalog {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name  String
+  sku   String?
+  price Decimal?
+
+  inventoryItems    InventoryItem[]
+  equipmentRequests EquipmentRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+enum WarehouseType {
+  HQ_WAREHOUSE
+  VIRTUAL_TRUCK
+}
+
+model Warehouse {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name String
+  type WarehouseType @default(HQ_WAREHOUSE)
+
+  assignedTechnicianId String? @unique
+  assignedTechnician   User?   @relation(fields: [assignedTechnicianId], references: [id], onDelete: SetNull)
+
+  inventoryItems    InventoryItem[]
+  equipmentRequests EquipmentRequest[] // Requests sent to this warehouse
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model InventoryItem {
+  id          String    @id @default(uuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   ProductCatalog @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([warehouseId, productId])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+model EquipmentRequest {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  hqWarehouseId String
+  hqWarehouse   Warehouse @relation(fields: [hqWarehouseId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   ProductCatalog @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity Int
+
+  status RequestStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+enum ExpenseStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+model ExpenseReceipt {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  technicianId String
+  technician   User   @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+
+  amount          Decimal
+  receiptPhotoUrl String
+
+  status ExpenseStatus @default(PENDING_APPROVAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}

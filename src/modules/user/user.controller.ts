@@ -1,4 +1,4 @@
-﻿import { Controller, Post, Body, Patch, Param, Get } from '@nestjs/common';
+import { Controller, Post, Body, Patch, Param, Get } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 
@@ -19,5 +19,10 @@ export class UserController {
   @Patch('staff/:id/approve')
   async approveStaff(@Param('id') userId: string, @CurrentUser() currentUser: any) {
     return this.userService.approveStaff(userId, currentUser);
+  }
+
+  @Patch('me/location')
+  async updateLocation(@Body() body: { latitude: number, longitude: number }, @CurrentUser() currentUser: any) {
+    return this.userService.updateLocation(currentUser.id, body.latitude, body.longitude);
   }
 }

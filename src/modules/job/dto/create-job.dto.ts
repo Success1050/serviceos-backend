@@ -1,27 +1,30 @@
-﻿import { IsNotEmpty, IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, IsNumber, IsInt } from 'class-validator';
 
 export class CreateJobDto {
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   title: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   description?: string;
 
-  @IsString()
   @IsNotEmpty()
+  @IsUUID()
   customerRecordId: string;
 
-  @IsString()
   @IsOptional()
+  @IsUUID()
   quoteId?: string;
 
-  @IsString()
   @IsOptional()
+  @IsUUID()
   assignedTechnicianId?: string;
 
-  @IsDateString()
   @IsOptional()
   scheduledAt?: string;
+
+  @IsOptional()
+  @IsInt()
+  estimatedDuration?: number;
 }
