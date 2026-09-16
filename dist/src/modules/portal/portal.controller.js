@@ -21,6 +21,7 @@ const current_user_decorator_1 = require("../../core/decorators/current-user.dec
 const request_otp_dto_1 = require("./dto/request-otp.dto");
 const verify_otp_dto_1 = require("./dto/verify-otp.dto");
 const create_service_request_dto_1 = require("../service-request/dto/create-service-request.dto");
+const accept_quote_dto_1 = require("./dto/accept-quote.dto");
 let PortalController = class PortalController {
     portalService;
     constructor(portalService) {
@@ -35,8 +36,9 @@ let PortalController = class PortalController {
     async getQuote(slug, quoteId) {
         return this.portalService.getQuoteForCustomer(slug, quoteId);
     }
-    async acceptQuote(slug, quoteId) {
-        return this.portalService.acceptQuote(slug, quoteId);
+    async acceptQuote(slug, quoteId, acceptDto, req) {
+        const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+        return this.portalService.acceptQuote(slug, quoteId, acceptDto, String(clientIp));
     }
     async getInvoice(slug, invoiceId) {
         return this.portalService.getInvoiceForCustomer(slug, invoiceId);
@@ -79,8 +81,10 @@ __decorate([
     (0, common_1.Patch)('quotes/:quoteId/accept'),
     __param(0, (0, common_1.Param)('slug')),
     __param(1, (0, common_1.Param)('quoteId')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, accept_quote_dto_1.AcceptQuoteDto, Object]),
     __metadata("design:returntype", Promise)
 ], PortalController.prototype, "acceptQuote", null);
 __decorate([

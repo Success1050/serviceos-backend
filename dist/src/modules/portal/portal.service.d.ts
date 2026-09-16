@@ -30,6 +30,20 @@ export declare class PortalService {
             email: string | null;
             address: string | null;
         };
+        milestones: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import("@prisma/client").$Enums.MilestoneStatus;
+            tenantId: string;
+            title: string;
+            percentage: import("@prisma/client/runtime/library").Decimal;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            order: number;
+            dueDate: Date | null;
+            quoteId: string;
+            invoiceId: string | null;
+        }[];
     } & {
         id: string;
         createdAt: Date;
@@ -39,8 +53,40 @@ export declare class PortalService {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
+        billingType: import("@prisma/client").$Enums.BillingType;
+        termsAndConditions: string | null;
+        signedTermsAt: Date | null;
+        signerName: string | null;
+        signerIp: string | null;
+        signatureData: string | null;
     }>;
-    acceptQuote(slug: string, quoteId: string): Promise<{
+    acceptQuote(slug: string, quoteId: string, acceptDto?: any, clientIp?: string): Promise<{
+        customerRecord: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string | null;
+            phone: string | null;
+            tenantId: string;
+            address: string | null;
+            city: string | null;
+        };
+        milestones: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import("@prisma/client").$Enums.MilestoneStatus;
+            tenantId: string;
+            title: string;
+            percentage: import("@prisma/client/runtime/library").Decimal;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            order: number;
+            dueDate: Date | null;
+            quoteId: string;
+            invoiceId: string | null;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -49,6 +95,12 @@ export declare class PortalService {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
+        billingType: import("@prisma/client").$Enums.BillingType;
+        termsAndConditions: string | null;
+        signedTermsAt: Date | null;
+        signerName: string | null;
+        signerIp: string | null;
+        signatureData: string | null;
     }>;
     getInvoiceForCustomer(slug: string, invoiceId: string): Promise<{
         tenant: {
@@ -68,8 +120,8 @@ export declare class PortalService {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
-        jobId: string | null;
         dueDate: Date | null;
+        jobId: string | null;
         paidAt: Date | null;
     }>;
     requestOtp(slug: string, phone: string): Promise<{
@@ -97,6 +149,12 @@ export declare class PortalService {
             customerRecordId: string;
             title: string;
             amount: import("@prisma/client/runtime/library").Decimal;
+            billingType: import("@prisma/client").$Enums.BillingType;
+            termsAndConditions: string | null;
+            signedTermsAt: Date | null;
+            signerName: string | null;
+            signerIp: string | null;
+            signatureData: string | null;
         }[];
         invoices: {
             id: string;
@@ -107,8 +165,8 @@ export declare class PortalService {
             customerRecordId: string;
             title: string;
             amount: import("@prisma/client/runtime/library").Decimal;
-            jobId: string | null;
             dueDate: Date | null;
+            jobId: string | null;
             paidAt: Date | null;
         }[];
         jobs: {
@@ -129,6 +187,7 @@ export declare class PortalService {
             completedAt: Date | null;
             completionOtp: string | null;
             completionOtpExpiresAt: Date | null;
+            paymentHoldStatus: string | null;
         }[];
         assets: {
             name: string;

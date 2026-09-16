@@ -18,7 +18,7 @@ let ExpenseService = class ExpenseService {
         this.prisma = prisma;
     }
     async submitExpense(tenantId, technicianId, data) {
-        const job = await this.prisma.job.findUnique({ where: { id: data.jobId, tenantId } });
+        const job = await this.prisma.job.findFirst({ where: { id: data.jobId, tenantId } });
         if (!job)
             throw new common_1.NotFoundException('Job not found');
         return this.prisma.expenseReceipt.create({
@@ -28,13 +28,31 @@ let ExpenseService = class ExpenseService {
                 technicianId,
                 amount: data.amount,
                 receiptPhotoUrl: data.receiptPhotoUrl,
-                status: 'PENDING_APPROVAL'
-            }
+                status: 'PENDING_APPROVAL',
+            },
+        });
+    }
+    async getExpenses(tenantId, status) {
+        const whereClause = { tenantId };
+        if (status) {
+            whereClause.status = status;
+        }
+        return this.prisma.expenseReceipt.findMany({
+            where: whereClause,
+            include: {
+                technician: {
+                    select: { id: true, firstName: true, lastName: true, email: true },
+                },
+                job: {
+                    select: { id: true, title: true },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
         });
     }
     async approveExpense(tenantId, expenseId) {
-        const expense = await this.prisma.expenseReceipt.findUnique({
-            where: { id: expenseId, tenantId }
+        const expense = await this.prisma.expenseReceipt.findFirst({
+            where: { id: expenseId, tenantId },
         });
         if (!expense)
             throw new common_1.NotFoundException('Expense receipt not found');
@@ -42,7 +60,20 @@ let ExpenseService = class ExpenseService {
             throw new common_1.BadRequestException('Expense is not pending');
         return this.prisma.expenseReceipt.update({
             where: { id: expenseId },
-            data: { status: 'APPROVED' }
+            data: { status: 'APPROVED' },
+        });
+    }
+    async rejectExpense(tenantId, expenseId) {
+        const expense = await this.prisma.expenseReceipt.findFirst({
+            where: { id: expenseId, tenantId },
+        });
+        if (!expense)
+            throw new common_1.NotFoundException('Expense receipt not found');
+        if (expense.status !== 'PENDING_APPROVAL')
+            throw new common_1.BadRequestException('Expense is not pending');
+        return this.prisma.expenseReceipt.update({
+            where: { id: expenseId },
+            data: { status: 'REJECTED' },
         });
     }
 };

@@ -12,10 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.JobService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../core/prisma/prisma.service");
+const payment_service_1 = require("../payment/payment.service");
 let JobService = class JobService {
     prisma;
-    constructor(prisma) {
+    paymentService;
+    constructor(prisma, paymentService) {
         this.prisma = prisma;
+        this.paymentService = paymentService;
     }
     async createJob(tenantId, createJobDto) {
         const customer = await this.prisma.customerRecord.findUnique({
@@ -53,7 +56,7 @@ let JobService = class JobService {
         if (user.permissions?.includes('technician_access')) {
             whereClause.assignedTechnicianId = user.id;
         }
-        return this.prisma.job.findMany({
+        const jobs = await this.prisma.job.findMany({
             where: whereClause,
             include: {
                 customerRecord: {
@@ -65,6 +68,10 @@ let JobService = class JobService {
             },
             orderBy: { scheduledAt: 'asc' },
         });
+        if (user.permissions?.includes('technician_access')) {
+            return jobs.map(({ completionOtp, ...rest }) => rest);
+        }
+        return jobs;
     }
     async updateJobStatus(tenantId, jobId, updateDto, user) {
         const job = await this.prisma.job.findUnique({
@@ -79,6 +86,9 @@ let JobService = class JobService {
         const data = { status: updateDto.status };
         const now = new Date();
         if (updateDto.status === 'EN_ROUTE' && job.status !== 'EN_ROUTE') {
+            if (job.paymentHoldStatus === 'HOLD_FAILED') {
+                throw new common_1.ForbiddenException('Cannot proceed to site: Pre-arrival payment authorization failed. Customer must update payment method before technician deployment.');
+            }
             data.enRouteAt = now;
         }
         else if (updateDto.status === 'IN_PROGRESS' && job.status !== 'IN_PROGRESS') {
@@ -100,6 +110,12 @@ let JobService = class JobService {
             }
             data.completedAt = now;
             data.completionOtp = null;
+            try {
+                await this.paymentService.captureEscrowHoldForJob(job.id, job.tenantId);
+            }
+            catch (escrowErr) {
+                console.error(`[STAGE 24 - ESCROW CAPTURE ERROR] Failed for job ${job.id}:`, escrowErr.message);
+            }
         }
         if (updateDto.latitude && updateDto.longitude && job.assignedTechnicianId) {
             await this.prisma.user.update({
@@ -111,10 +127,15 @@ let JobService = class JobService {
                 }
             });
         }
-        return this.prisma.job.update({
+        const updatedJob = await this.prisma.job.update({
             where: { id: jobId },
             data,
         });
+        if (user.permissions?.includes('technician_access')) {
+            const { completionOtp, ...rest } = updatedJob;
+            return rest;
+        }
+        return updatedJob;
     }
     async checkSchedulingConflicts(tenantId, technicianId, proposedStart, estimatedDurationMinutes) {
         const proposedEnd = new Date(proposedStart.getTime() + estimatedDurationMinutes * 60000);
@@ -138,6 +159,7 @@ let JobService = class JobService {
 exports.JobService = JobService;
 exports.JobService = JobService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        payment_service_1.PaymentService])
 ], JobService);
 //# sourceMappingURL=job.service.js.map

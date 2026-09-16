@@ -24,16 +24,52 @@ let QuoteService = class QuoteService {
         if (!customer || customer.tenantId !== tenantId) {
             throw new common_1.NotFoundException('Customer record not found for this tenant');
         }
-        const quote = await this.prisma.quote.create({
-            data: {
-                tenantId,
-                customerRecordId: createQuoteDto.customerRecordId,
-                title: createQuoteDto.title,
-                amount: createQuoteDto.amount,
-                status: 'DRAFT',
-            },
+        const billingType = createQuoteDto.billingType || 'FIXED';
+        if (billingType === 'MILESTONE' && createQuoteDto.milestones && createQuoteDto.milestones.length > 0) {
+            const totalPercentage = createQuoteDto.milestones.reduce((sum, m) => sum + Number(m.percentage), 0);
+            if (Math.round(totalPercentage) !== 100) {
+                throw new common_1.BadRequestException(`Milestone percentages must sum up to 100%. Current total: ${totalPercentage}%`);
+            }
+        }
+        return this.prisma.$transaction(async (tx) => {
+            const quote = await tx.quote.create({
+                data: {
+                    tenantId,
+                    customerRecordId: createQuoteDto.customerRecordId,
+                    title: createQuoteDto.title,
+                    amount: createQuoteDto.amount,
+                    billingType,
+                    termsAndConditions: createQuoteDto.termsAndConditions || null,
+                    status: 'DRAFT',
+                },
+            });
+            if (billingType === 'MILESTONE' && createQuoteDto.milestones && createQuoteDto.milestones.length > 0) {
+                let order = 1;
+                for (const m of createQuoteDto.milestones) {
+                    await tx.quoteMilestone.create({
+                        data: {
+                            quoteId: quote.id,
+                            tenantId,
+                            title: m.title,
+                            percentage: m.percentage,
+                            amount: m.amount,
+                            order: m.order || order++,
+                            dueDate: m.dueDate ? new Date(m.dueDate) : null,
+                            status: 'PENDING',
+                        },
+                    });
+                }
+            }
+            return tx.quote.findUnique({
+                where: { id: quote.id },
+                include: {
+                    milestones: { orderBy: { order: 'asc' } },
+                    customerRecord: {
+                        select: { name: true, email: true },
+                    },
+                },
+            });
         });
-        return quote;
     }
     async getQuotes(tenantId) {
         return this.prisma.quote.findMany({
@@ -43,8 +79,11 @@ let QuoteService = class QuoteService {
                     select: {
                         name: true,
                         email: true,
-                    }
-                }
+                    },
+                },
+                milestones: {
+                    orderBy: { order: 'asc' },
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -57,11 +96,15 @@ let QuoteService = class QuoteService {
             throw new common_1.NotFoundException('Quote not found for this tenant');
         }
         if (quote.status !== 'DRAFT') {
-            throw new Error('Only DRAFT quotes can be sent');
+            throw new common_1.BadRequestException('Only DRAFT quotes can be sent');
         }
         return this.prisma.quote.update({
             where: { id: quoteId },
             data: { status: 'SENT' },
+            include: {
+                milestones: { orderBy: { order: 'asc' } },
+                customerRecord: true,
+            },
         });
     }
 };

@@ -1,7 +1,8 @@
-﻿import { Controller, Post, Get, Patch, Body, Param, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, BadRequestException } from '@nestjs/common';
 import { JobService } from './job.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { Permissions } from '../../core/decorators/permissions.decorator';
 import { Role } from '@prisma/client';
@@ -36,5 +37,15 @@ export class JobController {
   ) {
     if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
     return this.jobService.updateJobStatus(user.tenantId, jobId, updateDto, user);
+  }
+
+  @Patch(':id/location')
+  async updateLocation(
+    @CurrentUser() user: any,
+    @Param('id') jobId: string,
+    @Body() locationDto: UpdateLocationDto,
+  ) {
+    if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
+    return this.jobService.updateTechnicianLocation(user.tenantId, jobId, locationDto, user);
   }
 }

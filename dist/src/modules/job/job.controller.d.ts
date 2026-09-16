@@ -22,8 +22,9 @@ export declare class JobController {
         completedAt: Date | null;
         completionOtp: string | null;
         completionOtpExpiresAt: Date | null;
+        paymentHoldStatus: string | null;
     }>;
-    findAll(user: any): Promise<({
+    findAll(user: any): Promise<{
         customerRecord: {
             name: string;
             address: string | null;
@@ -32,7 +33,6 @@ export declare class JobController {
             firstName: string;
             lastName: string;
         } | null;
-    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -48,9 +48,9 @@ export declare class JobController {
         enRouteAt: Date | null;
         startedAt: Date | null;
         completedAt: Date | null;
-        completionOtp: string | null;
         completionOtpExpiresAt: Date | null;
-    })[]>;
+        paymentHoldStatus: string | null;
+    }[]>;
     updateStatus(user: any, jobId: string, updateDto: UpdateJobStatusDto): Promise<{
         id: string;
         createdAt: Date;
@@ -67,7 +67,7 @@ export declare class JobController {
         enRouteAt: Date | null;
         startedAt: Date | null;
         completedAt: Date | null;
-        completionOtp: string | null;
         completionOtpExpiresAt: Date | null;
+        paymentHoldStatus: string | null;
     }>;
 }

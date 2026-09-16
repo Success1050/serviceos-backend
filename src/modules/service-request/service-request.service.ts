@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestStatusDto } from './dto/update-service-request-status.dto';
@@ -26,6 +26,10 @@ export class ServiceRequestService {
         description: createDto.description,
         assetId: createDto.assetId,
         status: 'OPEN',
+        urgency: (createDto.urgency as any) || 'NORMAL',
+        preferredDate: createDto.preferredDate ? new Date(createDto.preferredDate) : null,
+        preferredTimeSlot: createDto.preferredTimeSlot || null,
+        attachments: createDto.attachments || [],
       },
     });
   }

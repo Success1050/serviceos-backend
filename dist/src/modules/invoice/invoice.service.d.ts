@@ -12,8 +12,8 @@ export declare class InvoiceService {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
-        jobId: string | null;
         dueDate: Date | null;
+        jobId: string | null;
         paidAt: Date | null;
     }>;
     getInvoices(tenantId: string): Promise<({
@@ -34,8 +34,8 @@ export declare class InvoiceService {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
-        jobId: string | null;
         dueDate: Date | null;
+        jobId: string | null;
         paidAt: Date | null;
     })[]>;
     sendInvoice(tenantId: string, invoiceId: string): Promise<{
@@ -47,8 +47,8 @@ export declare class InvoiceService {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
-        jobId: string | null;
         dueDate: Date | null;
+        jobId: string | null;
         paidAt: Date | null;
     }>;
     markAsPaid(tenantId: string, invoiceId: string): Promise<{
@@ -60,8 +60,8 @@ export declare class InvoiceService {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
-        jobId: string | null;
         dueDate: Date | null;
+        jobId: string | null;
         paidAt: Date | null;
     }>;
 }

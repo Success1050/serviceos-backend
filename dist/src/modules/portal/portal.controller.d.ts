@@ -2,6 +2,7 @@ import { PortalService } from './portal.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { CreateServiceRequestDto } from '../service-request/dto/create-service-request.dto';
+import { AcceptQuoteDto } from './dto/accept-quote.dto';
 export declare class PortalController {
     private readonly portalService;
     constructor(portalService: PortalService);
@@ -25,6 +26,20 @@ export declare class PortalController {
             email: string | null;
             address: string | null;
         };
+        milestones: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import("@prisma/client").$Enums.MilestoneStatus;
+            tenantId: string;
+            title: string;
+            percentage: import("@prisma/client/runtime/library").Decimal;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            order: number;
+            dueDate: Date | null;
+            quoteId: string;
+            invoiceId: string | null;
+        }[];
     } & {
         id: string;
         createdAt: Date;
@@ -34,8 +49,40 @@ export declare class PortalController {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
+        billingType: import("@prisma/client").$Enums.BillingType;
+        termsAndConditions: string | null;
+        signedTermsAt: Date | null;
+        signerName: string | null;
+        signerIp: string | null;
+        signatureData: string | null;
     }>;
-    acceptQuote(slug: string, quoteId: string): Promise<{
+    acceptQuote(slug: string, quoteId: string, acceptDto: AcceptQuoteDto, req: any): Promise<{
+        customerRecord: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            email: string | null;
+            phone: string | null;
+            tenantId: string;
+            address: string | null;
+            city: string | null;
+        };
+        milestones: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import("@prisma/client").$Enums.MilestoneStatus;
+            tenantId: string;
+            title: string;
+            percentage: import("@prisma/client/runtime/library").Decimal;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            order: number;
+            dueDate: Date | null;
+            quoteId: string;
+            invoiceId: string | null;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -44,6 +91,12 @@ export declare class PortalController {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
+        billingType: import("@prisma/client").$Enums.BillingType;
+        termsAndConditions: string | null;
+        signedTermsAt: Date | null;
+        signerName: string | null;
+        signerIp: string | null;
+        signatureData: string | null;
     }>;
     getInvoice(slug: string, invoiceId: string): Promise<{
         tenant: {
@@ -63,8 +116,8 @@ export declare class PortalController {
         customerRecordId: string;
         title: string;
         amount: import("@prisma/client/runtime/library").Decimal;
-        jobId: string | null;
         dueDate: Date | null;
+        jobId: string | null;
         paidAt: Date | null;
     }>;
     requestOtp(slug: string, requestOtpDto: RequestOtpDto): Promise<{
@@ -92,6 +145,12 @@ export declare class PortalController {
             customerRecordId: string;
             title: string;
             amount: import("@prisma/client/runtime/library").Decimal;
+            billingType: import("@prisma/client").$Enums.BillingType;
+            termsAndConditions: string | null;
+            signedTermsAt: Date | null;
+            signerName: string | null;
+            signerIp: string | null;
+            signatureData: string | null;
         }[];
         invoices: {
             id: string;
@@ -102,8 +161,8 @@ export declare class PortalController {
             customerRecordId: string;
             title: string;
             amount: import("@prisma/client/runtime/library").Decimal;
-            jobId: string | null;
             dueDate: Date | null;
+            jobId: string | null;
             paidAt: Date | null;
         }[];
         jobs: {
@@ -124,6 +183,7 @@ export declare class PortalController {
             completedAt: Date | null;
             completionOtp: string | null;
             completionOtpExpiresAt: Date | null;
+            paymentHoldStatus: string | null;
         }[];
         assets: {
             name: string;

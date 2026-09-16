@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { PaymentService } from '../payment/payment.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 
 @Injectable()
 export class JobService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly paymentService: PaymentService,
+  ) {}
 
   async createJob(tenantId: string, createJobDto: CreateJobDto) {
     // 1. Verify customer record belongs to tenant
@@ -99,8 +104,14 @@ export class JobService {
     const data: any = { status: updateDto.status };
     const now = new Date();
 
-    // Stage 22 & 23: Time Tracking & OTP Logic
+    // Stage 22 & 23 & 24: Time Tracking, Site Protection & OTP Logic
     if (updateDto.status === 'EN_ROUTE' && job.status !== 'EN_ROUTE') {
+      // Stage 24: Site Visit Protection Gate
+      if (job.paymentHoldStatus === 'HOLD_FAILED') {
+        throw new ForbiddenException(
+          'Cannot proceed to site: Pre-arrival payment authorization failed. Customer must update payment method before technician deployment.',
+        );
+      }
       data.enRouteAt = now;
     } else if (updateDto.status === 'IN_PROGRESS' && job.status !== 'IN_PROGRESS') {
       data.startedAt = now;
@@ -127,6 +138,13 @@ export class JobService {
       
       data.completedAt = now;
       data.completionOtp = null; // Clear OTP on successful use
+
+      // Stage 24: Instant Escrow Capture upon verified site completion
+      try {
+        await this.paymentService.captureEscrowHoldForJob(job.id, job.tenantId);
+      } catch (escrowErr: any) {
+        console.error(`[STAGE 24 - ESCROW CAPTURE ERROR] Failed for job ${job.id}:`, escrowErr.message);
+      }
     }
 
     // Stage 22: Geolocation tracking
@@ -152,6 +170,47 @@ export class JobService {
     }
 
     return updatedJob;
+  }
+
+  async updateTechnicianLocation(tenantId: string, jobId: string, dto: UpdateLocationDto, user: any) {
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!job || job.tenantId !== tenantId) {
+      throw new NotFoundException('Job not found');
+    }
+
+    if (user.permissions?.includes('technician_access') && job.assignedTechnicianId !== user.id) {
+      throw new ForbiddenException('You can only stream location updates for your own assigned jobs');
+    }
+
+    const techId = job.assignedTechnicianId || user.id;
+    const now = new Date();
+
+    const updatedTech = await this.prisma.user.update({
+      where: { id: techId },
+      data: {
+        lastKnownLatitude: dto.latitude,
+        lastKnownLongitude: dto.longitude,
+        lastLocationUpdate: now,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        lastKnownLatitude: true,
+        lastKnownLongitude: true,
+        lastLocationUpdate: true,
+      },
+    });
+
+    return {
+      success: true,
+      jobId: job.id,
+      technician: updatedTech,
+      timestamp: now,
+    };
   }
 
   // --- Private Helpers ---

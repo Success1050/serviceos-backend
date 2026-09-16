@@ -25,14 +25,29 @@ let ExpenseController = class ExpenseController {
     constructor(expenseService) {
         this.expenseService = expenseService;
     }
+    async getExpenses(status, user) {
+        return this.expenseService.getExpenses(user.tenantId, status);
+    }
     async submitExpense(createExpenseDto, user) {
         return this.expenseService.submitExpense(user.tenantId, user.id, createExpenseDto);
     }
     async approveExpense(id, user) {
         return this.expenseService.approveExpense(user.tenantId, id);
     }
+    async rejectExpense(id, user) {
+        return this.expenseService.rejectExpense(user.tenantId, id);
+    }
 };
 exports.ExpenseController = ExpenseController;
+__decorate([
+    (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('expense_view', 'expense_approve'),
+    __param(0, (0, common_1.Query)('status')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ExpenseController.prototype, "getExpenses", null);
 __decorate([
     (0, common_1.Post)(),
     (0, permissions_decorator_1.Permissions)('expense_submit'),
@@ -51,6 +66,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], ExpenseController.prototype, "approveExpense", null);
+__decorate([
+    (0, common_1.Patch)(':id/reject'),
+    (0, permissions_decorator_1.Permissions)('expense_approve'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ExpenseController.prototype, "rejectExpense", null);
 exports.ExpenseController = ExpenseController = __decorate([
     (0, common_1.UseGuards)(jwt_guard_1.JwtGuard, permissions_guard_1.PermissionsGuard),
     (0, common_1.Controller)('expenses'),

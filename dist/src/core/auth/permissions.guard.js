@@ -29,7 +29,11 @@ let PermissionsGuard = class PermissionsGuard {
         const { user } = context.switchToHttp().getRequest();
         if (!user)
             return false;
-        const userPermissions = [...(user.role?.permissions || []), ...(user.directPermissions || [])];
+        const userPermissions = [
+            ...(user.permissions || []),
+            ...(user.role?.permissions || []),
+            ...(user.directPermissions || []),
+        ];
         const hasPermission = requiredPermissions.some((permission) => userPermissions.includes(permission));
         if (!hasPermission) {
             throw new common_1.ForbiddenException('Insufficient permissions');

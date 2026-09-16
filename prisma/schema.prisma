@@ -42,6 +42,9 @@ model Tenant {
   warehouses            Warehouse[]
   equipmentRequests     EquipmentRequest[]
   expenseReceipts       ExpenseReceipt[]
+  escrowHolds           EscrowHold[]
+  quoteMilestones       QuoteMilestone[]
+  paymentTransactions   PaymentTransaction[]
 
   settings  TenantSettings?
   auditLogs AuditLog[]
@@ -170,6 +173,11 @@ model User {
   lastKnownLatitude  Float?
   lastKnownLongitude Float?
   lastLocationUpdate DateTime?
+  avatarUrl          String?
+  bio                String?
+  certifications     String[]    @default([])
+  rating             Float?      @default(5.0)
+  jobsCompletedCount Int         @default(0)
   expenseReceipts    ExpenseReceipt[]
 
   createdAt DateTime   @default(now())
@@ -222,6 +230,8 @@ model CustomerRecord {
   assets               Asset[]
   serviceRequests      ServiceRequest[]
   maintenanceSchedules MaintenanceSchedule[]
+  escrowHolds          EscrowHold[]
+  paymentTransactions  PaymentTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -333,6 +343,14 @@ model Quote {
   title  String
   amount Decimal
   status QuoteStatus @default(DRAFT)
+  billingType         BillingType @default(FIXED)
+  termsAndConditions  String?
+  signedTermsAt       DateTime?
+  signerName          String?
+  signerIp            String?
+  signatureData       String?
+
+  milestones QuoteMilestone[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -364,6 +382,9 @@ model Invoice {
 
   jobId String?
   job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  escrowHold          EscrowHold?
+  quoteMilestone      QuoteMilestone?
+  paymentTransactions PaymentTransaction[]
 
   dueDate DateTime?
   paidAt  DateTime?
@@ -408,6 +429,8 @@ model Job {
   completedAt            DateTime?
   completionOtp          String?
   completionOtpExpiresAt DateTime?
+  paymentHoldStatus      String? // HOLD_PENDING, HELD, HOLD_FAILED, CAPTURED
+  escrowHolds            EscrowHold[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -434,6 +457,10 @@ model ServiceRequest {
 
   description String
   status      ServiceRequestStatus @default(OPEN)
+  urgency     UrgencyLevel         @default(NORMAL)
+  preferredDate DateTime?
+  preferredTimeSlot String?
+  attachments String[]             @default([])
 
   customerRecordId String
   customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
@@ -455,6 +482,13 @@ enum ServiceRequestStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+enum UrgencyLevel {
+  LOW
+  NORMAL
+  URGENT
+  EMERGENCY
 }
 
 model OtpCode {
@@ -658,4 +692,125 @@ model ExpenseReceipt {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+// ------------------------------------------------------
+// STAGE 24: ENTERPRISE PAYMENTS, FINANCIAL ESCROW & MILESTONES
+// ------------------------------------------------------
+
+enum BillingType {
+  FIXED
+  AUTH_AND_CAPTURE
+  MILESTONE
+}
+
+enum PaymentGatewayType {
+  STRIPE
+  PAYSTACK
+  FLUTTERWAVE
+}
+
+enum EscrowHoldStatus {
+  HELD
+  CAPTURED
+  RELEASED
+  FAILED
+}
+
+enum MilestoneStatus {
+  PENDING
+  INVOICED
+  PAID
+}
+
+enum PaymentTransactionStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+}
+
+model QuoteMilestone {
+  id       String @id @default(uuid())
+  quoteId  String
+  quote    Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title      String
+  percentage Decimal
+  amount     Decimal
+  order      Int             @default(1)
+  status     MilestoneStatus @default(PENDING)
+  dueDate    DateTime?
+
+  invoiceId String?  @unique
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([quoteId])
+}
+
+model EscrowHold {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  customerRecordId String
+  customerRecord   CustomerRecord @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  invoiceId String?  @unique
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  gateway        PaymentGatewayType @default(STRIPE)
+  gatewayAuthId  String? // Stripe PaymentIntent ID or Paystack authorization token
+  amount         Decimal
+  currency       String             @default("USD")
+  status         EscrowHoldStatus   @default(HELD)
+
+  expiresAt      DateTime?
+  capturedAt     DateTime?
+  releasedAt     DateTime?
+  failureReason  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([jobId])
+  @@index([customerRecordId])
+}
+
+model PaymentTransaction {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  customerRecordId String?
+  customerRecord   CustomerRecord? @relation(fields: [customerRecordId], references: [id], onDelete: SetNull)
+
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  gateway              PaymentGatewayType
+  transactionReference String             @unique
+  gatewayReference     String?
+  amount               Decimal
+  currency             String             @default("USD")
+  type                 String // "HOLD", "CAPTURE", "DIRECT_CHARGE", "MILESTONE_CHARGE", "REFUND"
+  paymentMethod        String? // "CARD", "BANK_TRANSFER", "USSD"
+  status               PaymentTransactionStatus @default(PENDING)
+  metadata             Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([transactionReference])
 }

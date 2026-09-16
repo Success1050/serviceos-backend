@@ -40,6 +40,7 @@ const announcement_module_1 = require("./modules/announcement/announcement.modul
 const internal_ticket_module_1 = require("./modules/internal-ticket/internal-ticket.module");
 const role_module_1 = require("./modules/role/role.module");
 const analytics_module_1 = require("./modules/analytics/analytics.module");
+const payment_module_1 = require("./modules/payment/payment.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -78,6 +79,7 @@ exports.AppModule = AppModule = __decorate([
             role_module_1.RoleModule,
             user_module_1.UserModule,
             analytics_module_1.AnalyticsModule,
+            payment_module_1.PaymentModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

@@ -54,6 +54,9 @@ let PortalService = class PortalService {
                 },
                 customerRecord: {
                     select: { name: true, email: true, address: true }
+                },
+                milestones: {
+                    orderBy: { order: 'asc' }
                 }
             }
         });
@@ -65,16 +68,56 @@ let PortalService = class PortalService {
         }
         return quote;
     }
-    async acceptQuote(slug, quoteId) {
+    async acceptQuote(slug, quoteId, acceptDto, clientIp) {
         const quote = await this.getQuoteForCustomer(slug, quoteId);
         if (quote.status !== 'SENT') {
             throw new common_1.BadRequestException('Only SENT quotes can be accepted');
         }
+        if (acceptDto && !acceptDto.acceptedTerms) {
+            throw new common_1.BadRequestException('You must accept the Terms and Conditions to proceed.');
+        }
+        const updateData = {
+            status: 'ACCEPTED',
+        };
+        if (acceptDto) {
+            updateData.signedTermsAt = new Date();
+            updateData.signerName = acceptDto.signerName;
+            updateData.signatureData = acceptDto.signatureData;
+            if (clientIp) {
+                updateData.signerIp = clientIp;
+            }
+        }
         const updatedQuote = await this.prisma.quote.update({
             where: { id: quoteId },
-            data: { status: 'ACCEPTED' },
+            data: updateData,
+            include: {
+                milestones: { orderBy: { order: 'asc' } },
+                customerRecord: true,
+            },
         });
-        await this.notificationService.sendToTenant(quote.tenantId, 'Quote Accepted!', `Quote #${quoteId.substring(0, 8)} was just accepted by ${quote.customerRecord.name}!`, 'SUCCESS', `/dashboard/quotes/${quoteId}`);
+        if (updatedQuote.billingType === 'MILESTONE' && updatedQuote.milestones?.length > 0) {
+            const firstMilestone = updatedQuote.milestones[0];
+            if (firstMilestone.status === 'PENDING') {
+                const milestoneInvoice = await this.prisma.invoice.create({
+                    data: {
+                        tenantId: quote.tenantId,
+                        customerRecordId: quote.customerRecordId,
+                        title: `Deposit - ${firstMilestone.title} (${quote.title})`,
+                        amount: firstMilestone.amount,
+                        status: 'SENT',
+                        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                    },
+                });
+                await this.prisma.quoteMilestone.update({
+                    where: { id: firstMilestone.id },
+                    data: {
+                        status: 'INVOICED',
+                        invoiceId: milestoneInvoice.id,
+                    },
+                });
+            }
+        }
+        await this.notificationService.sendToTenant(quote.tenantId, 'Quote Accepted & T&C Signed!', `Quote #${quoteId.substring(0, 8)} was just accepted by ${quote.customerRecord.name}!`, 'SUCCESS', `/dashboard/quotes/${quoteId}`);
         return updatedQuote;
     }
     async getInvoiceForCustomer(slug, invoiceId) {

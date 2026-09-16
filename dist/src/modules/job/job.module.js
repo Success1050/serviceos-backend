@@ -10,11 +10,13 @@ exports.JobModule = void 0;
 const common_1 = require("@nestjs/common");
 const job_service_1 = require("./job.service");
 const job_controller_1 = require("./job.controller");
+const payment_module_1 = require("../payment/payment.module");
 let JobModule = class JobModule {
 };
 exports.JobModule = JobModule;
 exports.JobModule = JobModule = __decorate([
     (0, common_1.Module)({
+        imports: [payment_module_1.PaymentModule],
         controllers: [job_controller_1.JobController],
         providers: [job_service_1.JobService],
         exports: [job_service_1.JobService],
