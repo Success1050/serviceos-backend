@@ -45,6 +45,8 @@ model Tenant {
   escrowHolds           EscrowHold[]
   quoteMilestones       QuoteMilestone[]
   paymentTransactions   PaymentTransaction[]
+  supportTickets        SupportTicket[]
+  hrDocuments           HrDocument[]
 
   settings  TenantSettings?
   auditLogs AuditLog[]
@@ -177,12 +179,48 @@ model User {
   bio                String?
   certifications     String[]    @default([])
   rating             Float?      @default(5.0)
-  jobsCompletedCount Int         @default(0)
+  jobsCompletedCount Int                    @default(0)
   expenseReceipts    ExpenseReceipt[]
+  assignedTickets    SupportTicket[]        @relation("TicketAssignee")
+  resolvedTickets    SupportTicket[]        @relation("TicketResolver")
+  ticketMessages     SupportTicketMessage[]
+
+  // Stage 27: Blue-Collar HR & Field Tech Attributes
+  isFieldTech                 Boolean                 @default(false)
+  tradeSpecialty              String?
+  customCommissionRate        Decimal?                @db.Decimal(5, 2)
+  hourlyRate                  Decimal?                @db.Decimal(10, 2)
+
+  proxyVerificationStatus     ProxyVerificationStatus @default(NOT_REQUIRED)
+  managerEndorsementNotes     String?                 @db.Text
+  managerVerifiedAt           DateTime?
+  managerVerifiedById         String?
+  managerVerifiedBy           User?                   @relation("ManagerEndorsements", fields: [managerVerifiedById], references: [id], onDelete: SetNull)
+  endorsedTechs               User[]                  @relation("ManagerEndorsements")
+
+  hqReviewNotes               String?                 @db.Text
+  hqReviewedAt                DateTime?
+  hqReviewedById              String?
+  hqReviewedBy                User?                   @relation("HqTechReviews", fields: [hqReviewedById], references: [id], onDelete: SetNull)
+  reviewedTechs               User[]                  @relation("HqTechReviews")
+
+  termsAcknowledged           Boolean                 @default(false)
+  termsAcknowledgedAt         DateTime?
+  termsAcknowledgedIp         String?
+  termsAcknowledgedUserAgent  String?
+  termsVersion                String?                 @default("v1.0-2026")
+  agreedCommissionSnapshot    Decimal?                @db.Decimal(5, 2)
+
+  hrDocuments                 HrDocument[]            @relation("TechnicianHrFiles")
+  uploadedHrDocuments         HrDocument[]            @relation("UploadedHrDocuments")
+  verifiedHrDocuments         HrDocument[]            @relation("VerifiedHrDocuments")
 
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   auditLogs AuditLog[]
+
+  @@index([tenantId, isFieldTech])
+  @@index([phone])
 }
 
 // ------------------------------------------------------
@@ -232,6 +270,7 @@ model CustomerRecord {
   maintenanceSchedules MaintenanceSchedule[]
   escrowHolds          EscrowHold[]
   paymentTransactions  PaymentTransaction[]
+  supportTickets       SupportTicket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -319,6 +358,7 @@ model Asset {
 
   serviceRequests      ServiceRequest[]
   maintenanceSchedules MaintenanceSchedule[]
+  supportTickets       SupportTicket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -385,6 +425,7 @@ model Invoice {
   escrowHold          EscrowHold?
   quoteMilestone      QuoteMilestone?
   paymentTransactions PaymentTransaction[]
+  supportTickets      SupportTicket[]
 
   dueDate DateTime?
   paidAt  DateTime?
@@ -402,6 +443,7 @@ enum InvoiceStatus {
   PAID
   OVERDUE
   CANCELLED
+  DISPUTED
 }
 
 model Job {
@@ -438,6 +480,7 @@ model Job {
   invoices        Invoice[]
   serviceRequests ServiceRequest[]
   expenseReceipts ExpenseReceipt[]
+  supportTickets  SupportTicket[]
 
   @@index([tenantId])
 }
@@ -807,6 +850,7 @@ model PaymentTransaction {
   paymentMethod        String? // "CARD", "BANK_TRANSFER", "USSD"
   status               PaymentTransactionStatus @default(PENDING)
   metadata             Json?
+  supportTickets       SupportTicket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -814,3 +858,191 @@ model PaymentTransaction {
   @@index([tenantId])
   @@index([transactionReference])
 }
+
+// ------------------------------------------------------
+// STAGE 26: CUSTOMER SUPPORT HUB & DISPUTES
+// ------------------------------------------------------
+
+enum SupportTicketType {
+  WARRANTY_CLAIM
+  BILLING_DISPUTE
+  SERVICE_COMPLAINT
+  GENERAL_INQUIRY
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_CUSTOMER
+  ACTION_REQUIRED
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DisputeReason {
+  OVERCHARGED
+  UNAUTHORIZED_FEE
+  WORK_NOT_COMPLETED
+  POOR_WORKMANSHIP
+  DOUBLE_CHARGED
+  WARRANTY_DENIAL
+  OTHER
+}
+
+enum DisputeResolutionAction {
+  UPHOLD_CHARGE
+  PARTIAL_CREDIT
+  FULL_REFUND
+  VOID_INVOICE
+}
+
+enum MessageSenderType {
+  CUSTOMER
+  STAFF
+  SYSTEM
+}
+
+model SupportTicket {
+  id                   String              @id @default(uuid())
+  ticketNumber         String              // Deterministic formatted: TKT-2026-00001
+  tenantId             String
+  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  customerRecordId     String
+  customerRecord       CustomerRecord      @relation(fields: [customerRecordId], references: [id], onDelete: Cascade)
+
+  type                 SupportTicketType   @default(GENERAL_INQUIRY)
+  status               SupportTicketStatus @default(OPEN)
+  priority             TicketPriority      @default(NORMAL)
+
+  subject              String
+  description          String
+  attachments          String[]            @default([])
+
+  // Contextual Entity Links
+  assetId              String?
+  asset                Asset?              @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  invoiceId            String?
+  invoice              Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  paymentTransactionId String?
+  paymentTransaction   PaymentTransaction? @relation(fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+
+  jobId                String?
+  job                  Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  // Warranty specific fields
+  warrantyValidAtFiling Boolean?           @default(false)
+  warrantyResolutionJobId String?
+
+  // Dispute specific fields
+  disputedAmount       Decimal?
+  disputeReason        DisputeReason?
+  resolutionAction     DisputeResolutionAction?
+  refundTransactionId  String?
+
+  // Assignment & Resolution lifecycle
+  assignedStaffId      String?
+  assignedStaff        User?               @relation("TicketAssignee", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+
+  resolvedById         String?
+  resolvedBy           User?               @relation("TicketResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolutionNotes      String?
+  firstResponseAt      DateTime?
+  resolvedAt           DateTime?
+  closedAt             DateTime?
+
+  messages             SupportTicketMessage[]
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@unique([tenantId, ticketNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@index([customerRecordId])
+  @@index([invoiceId])
+  @@index([assetId])
+}
+
+model SupportTicketMessage {
+  id               String            @id @default(uuid())
+  ticketId         String
+  ticket           SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  senderType       MessageSenderType @default(CUSTOMER)
+  senderUserId     String?
+  senderUser       User?             @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  senderName       String            // e.g. "Front Desk Staff", "John Doe (Customer)"
+  message          String
+  attachments      String[]          @default([])
+
+  isInternalNote   Boolean           @default(false) // Staff-only internal note, never exposed to customer portal!
+  readAt           DateTime?
+
+  createdAt        DateTime          @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+// ------------------------------------------------------
+// STAGE 27: BLUE-COLLAR HR & SMS ONBOARDING
+// ------------------------------------------------------
+
+enum ProxyVerificationStatus {
+  NOT_REQUIRED
+  PENDING_HQ_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum HrDocumentType {
+  NATIONAL_ID
+  GOVERNMENT_PHOTO_ID
+  TECH_LIVE_PHOTO
+  TRADE_CERTIFICATION
+  RESUME_CV
+  CONTRACT_DISCLOSURE
+  OTHER
+}
+
+model HrDocument {
+  id            String         @id @default(uuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId        String
+  user          User           @relation("TechnicianHrFiles", fields: [userId], references: [id], onDelete: Cascade)
+
+  documentType  HrDocumentType @default(GOVERNMENT_PHOTO_ID)
+  fileName      String
+  fileUrl       String
+  fileSizeBytes Int?
+  mimeType      String?
+  notes         String?
+
+  uploadedById  String
+  uploadedBy    User           @relation("UploadedHrDocuments", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  verifiedAt    DateTime?
+  verifiedById  String?
+  verifiedBy    User?          @relation("VerifiedHrDocuments", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([documentType])
+}
+

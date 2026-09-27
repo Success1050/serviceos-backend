@@ -108,7 +108,7 @@ async function runStage24Verification() {
   });
 
   const paymentService = new PaymentService(prisma as any, factory, mockNotificationService);
-  const portalService = new PortalService(prisma as any, configService, null as any, mockNotificationService);
+  const portalService = new PortalService(prisma as any, configService, null as any, mockNotificationService, null as any);
   const jobService = new JobService(prisma as any, paymentService);
 
   // 5. Quote with Milestone Billing & T&C Signing

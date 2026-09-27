@@ -17,6 +17,8 @@ const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
+const request_tech_pin_dto_1 = require("./dto/request-tech-pin.dto");
+const verify_tech_pin_dto_1 = require("./dto/verify-tech-pin.dto");
 const public_decorator_1 = require("../../core/decorators/public.decorator");
 let AuthController = class AuthController {
     authService;
@@ -31,6 +33,12 @@ let AuthController = class AuthController {
     }
     async resetTempPassword(body) {
         return this.authService.resetTempPassword(body.email, body.tempPassword, body.newPassword);
+    }
+    async requestTechPin(dto) {
+        return this.authService.requestTechPin(dto);
+    }
+    async verifyTechPin(dto) {
+        return this.authService.verifyTechPin(dto);
     }
 };
 exports.AuthController = AuthController;
@@ -55,6 +63,20 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resetTempPassword", null);
+__decorate([
+    (0, common_1.Post)('tech/request-pin'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [request_tech_pin_dto_1.RequestTechPinDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "requestTechPin", null);
+__decorate([
+    (0, common_1.Post)('tech/verify-pin'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [verify_tech_pin_dto_1.VerifyTechPinDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyTechPin", null);
 exports.AuthController = AuthController = __decorate([
     (0, public_decorator_1.Public)(),
     (0, common_1.Controller)('auth'),

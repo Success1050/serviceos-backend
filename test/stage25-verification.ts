@@ -37,6 +37,7 @@ async function runStage25Verification() {
     configService,
     serviceRequestService,
     mockNotificationService,
+    null as any,
   );
   const jobService = new JobService(prisma as any, mockPaymentService);
 

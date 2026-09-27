@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const job_service_1 = require("./job.service");
 const create_job_dto_1 = require("./dto/create-job.dto");
 const update_job_status_dto_1 = require("./dto/update-job-status.dto");
+const update_location_dto_1 = require("./dto/update-location.dto");
 const current_user_decorator_1 = require("../../core/decorators/current-user.decorator");
 const permissions_decorator_1 = require("../../core/decorators/permissions.decorator");
 let JobController = class JobController {
@@ -38,6 +39,11 @@ let JobController = class JobController {
         if (!user.tenantId)
             throw new common_1.BadRequestException('User does not belong to a tenant');
         return this.jobService.updateJobStatus(user.tenantId, jobId, updateDto, user);
+    }
+    async updateLocation(user, jobId, locationDto) {
+        if (!user.tenantId)
+            throw new common_1.BadRequestException('User does not belong to a tenant');
+        return this.jobService.updateTechnicianLocation(user.tenantId, jobId, locationDto, user);
     }
 };
 exports.JobController = JobController;
@@ -66,6 +72,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, update_job_status_dto_1.UpdateJobStatusDto]),
     __metadata("design:returntype", Promise)
 ], JobController.prototype, "updateStatus", null);
+__decorate([
+    (0, common_1.Patch)(':id/location'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, update_location_dto_1.UpdateLocationDto]),
+    __metadata("design:returntype", Promise)
+], JobController.prototype, "updateLocation", null);
 exports.JobController = JobController = __decorate([
     (0, common_1.Controller)('jobs'),
     __metadata("design:paramtypes", [job_service_1.JobService])

@@ -6,6 +6,9 @@ import { ServiceRequestService } from '../service-request/service-request.servic
 import { CreateServiceRequestDto } from '../service-request/dto/create-service-request.dto';
 import { NotificationService } from '../notification/notification.service';
 import { LiveTrackingResponseDto } from './dto/live-tracking.dto';
+import { SupportTicketService } from '../support-ticket/support-ticket.service';
+import { CreateCustomerTicketDto } from '../support-ticket/dto/create-customer-ticket.dto';
+import { CreateTicketMessageDto } from '../support-ticket/dto/create-ticket-message.dto';
 
 @Injectable()
 export class PortalService {
@@ -16,6 +19,7 @@ export class PortalService {
     private readonly configService: ConfigService,
     private readonly serviceRequestService: ServiceRequestService,
     private readonly notificationService: NotificationService,
+    private readonly supportTicketService: SupportTicketService,
   ) {
     const secretStr = this.configService.get<string>('JWT_SECRET') || 'super-secret-key-for-dev-only-do-not-use-in-prod';
     this.jwtSecret = new TextEncoder().encode(secretStr);
@@ -437,7 +441,7 @@ export class PortalService {
   async getDashboard(tenantId: string, relationshipId: string) {
     const relationship = await this.validateCustomerRelationship(tenantId, relationshipId);
 
-    const [quotes, invoices, jobs, assets, serviceRequests] = await Promise.all([
+    const [quotes, invoices, jobs, assets, serviceRequests, supportTickets] = await Promise.all([
       this.prisma.quote.findMany({
         where: { tenantId, customerRecordId: relationship.customerRecordId, status: { not: 'DRAFT' } },
         orderBy: { createdAt: 'desc' },
@@ -462,6 +466,15 @@ export class PortalService {
       }),
       this.prisma.serviceRequest.findMany({
         where: { tenantId, customerRecordId: relationship.customerRecordId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.supportTicket.findMany({
+        where: { tenantId, customerRecordId: relationship.customerRecordId },
+        include: {
+          asset: { select: { id: true, name: true, serialNumber: true } },
+          invoice: { select: { id: true, title: true, amount: true, status: true } },
+        },
         orderBy: { createdAt: 'desc' },
         take: 5,
       }),
@@ -492,6 +505,7 @@ export class PortalService {
       jobs,
       assets,
       serviceRequests,
+      supportTickets,
     };
   }
 
@@ -716,5 +730,84 @@ export class PortalService {
     }
 
     return invoice;
+  }
+
+  // ==========================================
+  // STAGE 26: CUSTOMER SUPPORT HUB & DISPUTES
+  // ==========================================
+
+  async createSupportTicket(tenantId: string, relationshipId: string, createDto: CreateCustomerTicketDto) {
+    const relationship = await this.validateCustomerRelationship(tenantId, relationshipId);
+    return this.supportTicketService.createCustomerTicket(
+      tenantId,
+      relationship.customerRecordId,
+      createDto,
+      relationship.customerRecord.name,
+    );
+  }
+
+  async getCustomerSupportTickets(tenantId: string, relationshipId: string) {
+    const relationship = await this.validateCustomerRelationship(tenantId, relationshipId);
+    return this.supportTicketService.getCustomerTickets(tenantId, relationship.customerRecordId);
+  }
+
+  async getSupportTicketDetails(tenantId: string, relationshipId: string, ticketId: string) {
+    const relationship = await this.validateCustomerRelationship(tenantId, relationshipId);
+    return this.supportTicketService.getTicketDetails(tenantId, ticketId, true, relationship.customerRecordId);
+  }
+
+  async postTicketMessage(
+    tenantId: string,
+    relationshipId: string,
+    ticketId: string,
+    createMessageDto: CreateTicketMessageDto,
+  ) {
+    const relationship = await this.validateCustomerRelationship(tenantId, relationshipId);
+    return this.supportTicketService.addMessage(
+      tenantId,
+      ticketId,
+      {
+        senderType: 'CUSTOMER',
+        senderCustomerRecordId: relationship.customerRecordId,
+        senderName: relationship.customerRecord.name,
+      },
+      createMessageDto,
+    );
+  }
+
+  async closeCustomerTicket(tenantId: string, relationshipId: string, ticketId: string) {
+    const relationship = await this.validateCustomerRelationship(tenantId, relationshipId);
+    const ticket = await this.supportTicketService.getTicketDetails(tenantId, ticketId, true, relationship.customerRecordId);
+
+    if (ticket.status === 'CLOSED') {
+      throw new BadRequestException('Ticket is already closed');
+    }
+
+    await this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: {
+        status: 'CLOSED',
+        closedAt: new Date(),
+      },
+    });
+
+    await this.prisma.supportTicketMessage.create({
+      data: {
+        ticketId,
+        senderType: 'SYSTEM',
+        senderName: 'Customer Portal',
+        message: `Ticket closed by customer (${relationship.customerRecord.name}).`,
+      },
+    });
+
+    await this.notificationService.sendToTenant(
+      tenantId,
+      `Support Ticket Closed #${ticket.ticketNumber}`,
+      `Customer ${relationship.customerRecord.name} marked Ticket #${ticket.ticketNumber} as resolved and closed.`,
+      'INFO',
+      `/dashboard/support-tickets/${ticket.id}`,
+    );
+
+    return { message: 'Ticket closed successfully', ticketId };
   }
 }

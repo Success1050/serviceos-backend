@@ -50,15 +50,20 @@ This document outlines the upcoming stages for the ServiceOS Enterprise Tier, fo
 - **Live Tracking:** Customers log in to see appointment times, technician bios/photos, and real-time status ("Tech is on the way").
 - **Self-Serve History:** Access to all past invoices, digital records, and a direct pipeline to request new service calls straight to the branch's queue.
 
-## Stage 26: Customer Support Hub
+## Stage 26: Customer Support Hub (Completed - Backend)
 - **Ticketing & Disputes:** A centralized hub where customers can log warranty requests, dispute charges, or chat with the Sub-Company's front desk directly through the portal.
+- **Warranty Claims Engine:** Customers can select registered assets with auto-verification of warranty expiration. Approving a claim automatically provisions a $0 warranty rework job linked to the asset and customer.
+- **Automated Charge Dispute Protection:** Filing a billing dispute instantly freezes the invoice (`DISPUTED`), halting automated payment collection and dunning. Resolving a dispute provides audited actions: upholding charges with documented justification, issuing partial credit notes, or executing gateway refunds (Stripe / Paystack) and releasing escrow holds.
+- **2-Way Live Front Desk Chat & Internal Notes:** Bi-directional messaging thread between customer portal and branch support desk with read receipts and private staff-only internal notes (`isInternalNote: true`) guarded from customer visibility.
+- **Dual-Channel Real-Time Notifications:** Instant event push to both the tenant front desk queue and customer portal via WebSockets (`NotificationGateway`) and in-app notifications.
+- **Executive SLA & Dispute Metrics:** Backoffice dashboard tracking open dispute counts, pending warranty claims, urgent tickets, and average resolution times.
 
-## Stage 27: Blue-Collar HR & SMS Onboarding
-- **"Over-the-Desk" Setup:** Managers create tech profiles using only a phone number (no email required for field workers).
-- **Document Management:** Managers can upload photos of IDs, physical certifications, or PDF CVs (for literate engineers) directly to the tech's digital HR file.
-- **HQ Proxy Verification:** For illiterate techs, HQ relies on the Branch Manager's physical verification. The manager uploads a photo of the tech and their ID. HQ reviews the manager's endorsement on the dashboard and approves the hire, maintaining corporate brand security.
-- **SMS App Login:** Techs receive a 4-digit PIN via SMS to log into their app.
-- **The "Big Button" Acknowledgment:** Upon first login, techs see their custom commission rate with a massive "I AGREE" button, providing legal payroll protection without complex contracts.
+## Stage 27: Blue-Collar HR & SMS Onboarding (Completed - Backend)
+- **"Over-the-Desk" Setup:** Branch managers can onboard field workers using only a phone number, trade specialty, and custom commission rate (zero email dependency, with deterministic shadow identities for seamless database compatibility).
+- **Digital HR Dossier & Document Management:** Multi-document repository (`HrDocument`) attaching national IDs, live over-the-desk face photos, trade certifications (HVAC, Electrical, Plumbing), and PDF resumes directly to the technician's permanent file.
+- **HQ Proxy Verification Engine:** Corporate HQ God-View dashboard across all franchisee branches to audit manager endorsements and physical ID evidence. HQ approves or rejects hires with feedback, maintaining corporate brand governance and dispatch security.
+- **Passwordless 4-Digit SMS PIN Login:** Field technicians authenticate into their mobile web app / PWA using a fast, 4-digit numeric PIN sent via SMS (rate-limited, cryptographic generation, replay protection, and zero passwords to remember or reset).
+- **The "Big Button" Legal Compensation Acknowledgment:** Upon first mobile login, technicians review a clear commission disclosure and tap a massive "I AGREE" button, generating an immutable `AuditLog` entry (timestamp, IP address, user-agent, rate snapshot) providing undeniable legal payroll protection against labor disputes.
 
 ## Stage 28: Fintech Wallets & Multi-Tenant Payroll
 - **The 3-Tier Wallet System:** 

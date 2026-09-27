@@ -12,12 +12,13 @@ const portal_service_1 = require("./portal.service");
 const portal_controller_1 = require("./portal.controller");
 const service_request_module_1 = require("../service-request/service-request.module");
 const notification_module_1 = require("../notification/notification.module");
+const support_ticket_module_1 = require("../support-ticket/support-ticket.module");
 let PortalModule = class PortalModule {
 };
 exports.PortalModule = PortalModule;
 exports.PortalModule = PortalModule = __decorate([
     (0, common_1.Module)({
-        imports: [service_request_module_1.ServiceRequestModule, notification_module_1.NotificationModule],
+        imports: [service_request_module_1.ServiceRequestModule, notification_module_1.NotificationModule, support_ticket_module_1.SupportTicketModule],
         controllers: [portal_controller_1.PortalController],
         providers: [portal_service_1.PortalService],
     })

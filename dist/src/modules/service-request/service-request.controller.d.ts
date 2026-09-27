@@ -26,6 +26,10 @@ export declare class ServiceRequestController {
         customerRecordId: string;
         description: string;
         assetId: string | null;
+        urgency: import("@prisma/client").$Enums.UrgencyLevel;
+        preferredDate: Date | null;
+        preferredTimeSlot: string | null;
+        attachments: string[];
         jobId: string | null;
     })[]>;
     updateStatus(user: any, requestId: string, updateDto: UpdateServiceRequestStatusDto): Promise<{
@@ -37,6 +41,10 @@ export declare class ServiceRequestController {
         customerRecordId: string;
         description: string;
         assetId: string | null;
+        urgency: import("@prisma/client").$Enums.UrgencyLevel;
+        preferredDate: Date | null;
+        preferredTimeSlot: string | null;
+        attachments: string[];
         jobId: string | null;
     }>;
 }

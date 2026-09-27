@@ -12,8 +12,8 @@ export declare class MaintenanceService {
         customerRecordId: string;
         title: string;
         assetId: string | null;
-        intervalMonths: number;
         nextDueDate: Date;
+        intervalMonths: number;
         currentJobId: string | null;
     }>;
     getUpcomingMaintenance(tenantId: string, daysLookahead?: number): Promise<({
@@ -34,8 +34,8 @@ export declare class MaintenanceService {
         customerRecordId: string;
         title: string;
         assetId: string | null;
-        intervalMonths: number;
         nextDueDate: Date;
+        intervalMonths: number;
         currentJobId: string | null;
     })[]>;
     generateJobsForDueSchedules(): Promise<{
@@ -51,8 +51,8 @@ export declare class MaintenanceService {
         customerRecordId: string;
         title: string;
         assetId: string | null;
-        intervalMonths: number;
         nextDueDate: Date;
+        intervalMonths: number;
         currentJobId: string | null;
     }>;
 }

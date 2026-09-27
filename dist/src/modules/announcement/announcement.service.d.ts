@@ -8,8 +8,8 @@ export declare class AnnouncementService {
         updatedAt: Date;
         tenantId: string;
         title: string;
-        content: string;
         priority: import("@prisma/client").$Enums.AnnouncementPriority;
+        content: string;
         targetTenants: string[];
     }>;
     findAllForTenant(tenantId: string): Promise<{
@@ -18,8 +18,8 @@ export declare class AnnouncementService {
         updatedAt: Date;
         tenantId: string;
         title: string;
-        content: string;
         priority: import("@prisma/client").$Enums.AnnouncementPriority;
+        content: string;
         targetTenants: string[];
     }[]>;
 }

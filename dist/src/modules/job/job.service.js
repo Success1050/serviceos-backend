@@ -137,6 +137,41 @@ let JobService = class JobService {
         }
         return updatedJob;
     }
+    async updateTechnicianLocation(tenantId, jobId, dto, user) {
+        const job = await this.prisma.job.findUnique({
+            where: { id: jobId },
+        });
+        if (!job || job.tenantId !== tenantId) {
+            throw new common_1.NotFoundException('Job not found');
+        }
+        if (user.permissions?.includes('technician_access') && job.assignedTechnicianId !== user.id) {
+            throw new common_1.ForbiddenException('You can only stream location updates for your own assigned jobs');
+        }
+        const techId = job.assignedTechnicianId || user.id;
+        const now = new Date();
+        const updatedTech = await this.prisma.user.update({
+            where: { id: techId },
+            data: {
+                lastKnownLatitude: dto.latitude,
+                lastKnownLongitude: dto.longitude,
+                lastLocationUpdate: now,
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                lastKnownLatitude: true,
+                lastKnownLongitude: true,
+                lastLocationUpdate: true,
+            },
+        });
+        return {
+            success: true,
+            jobId: job.id,
+            technician: updatedTech,
+            timestamp: now,
+        };
+    }
     async checkSchedulingConflicts(tenantId, technicianId, proposedStart, estimatedDurationMinutes) {
         const proposedEnd = new Date(proposedStart.getTime() + estimatedDurationMinutes * 60000);
         const conflictingJobs = await this.prisma.job.findMany({

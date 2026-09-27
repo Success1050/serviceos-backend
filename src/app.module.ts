@@ -32,6 +32,8 @@ import { InternalTicketModule } from './modules/internal-ticket/internal-ticket.
 import { RoleModule } from './modules/role/role.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { SupportTicketModule } from './modules/support-ticket/support-ticket.module';
+import { HrModule } from './modules/hr/hr.module';
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { PaymentModule } from './modules/payment/payment.module';
     UserModule,
     AnalyticsModule,
     PaymentModule,
+    SupportTicketModule,
+    HrModule,
   ],
   controllers: [AppController],
   providers: [

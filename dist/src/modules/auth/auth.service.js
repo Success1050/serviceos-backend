@@ -136,6 +136,98 @@ let AuthService = class AuthService {
         });
         return { message: 'Password reset successfully. You may now log in.' };
     }
+    async requestTechPin(dto) {
+        const cleanedPhone = dto.phone.trim().replace(/[\s\-\(\)]/g, '');
+        const user = await this.prisma.user.findFirst({
+            where: {
+                phone: cleanedPhone,
+                isFieldTech: true,
+            },
+            include: { tenant: true },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('No active field technician profile found matching this phone number');
+        }
+        if (user.proxyVerificationStatus === 'PENDING_HQ_REVIEW') {
+            throw new common_1.ForbiddenException('Your technician profile is pending Corporate HQ proxy verification. Please contact your branch manager.');
+        }
+        if (user.proxyVerificationStatus === 'REJECTED') {
+            throw new common_1.ForbiddenException('Your technician profile was not approved by Corporate HQ.');
+        }
+        if (user.status === 'SUSPENDED') {
+            throw new common_1.ForbiddenException('Your technician account is suspended.');
+        }
+        const pin = Math.floor(1000 + Math.random() * 9000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        await this.prisma.otpCode.create({
+            data: {
+                phone: cleanedPhone,
+                code: pin,
+                expiresAt,
+            },
+        });
+        console.log(`[STAGE 27 SMS AUTH] SMS dispatched to ${cleanedPhone}: "Your ServiceOS Tech PIN is ${pin}. Valid for 10 minutes."`);
+        return {
+            message: '4-digit PIN sent via SMS successfully',
+            phone: cleanedPhone,
+            expiresInSeconds: 600,
+        };
+    }
+    async verifyTechPin(dto) {
+        const cleanedPhone = dto.phone.trim().replace(/[\s\-\(\)]/g, '');
+        const validOtp = await this.prisma.otpCode.findFirst({
+            where: {
+                phone: cleanedPhone,
+                code: dto.pin,
+                expiresAt: { gt: new Date() },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (!validOtp) {
+            throw new common_1.UnauthorizedException('Invalid or expired 4-digit PIN');
+        }
+        await this.prisma.otpCode.deleteMany({
+            where: { phone: cleanedPhone },
+        });
+        const user = await this.prisma.user.findFirst({
+            where: {
+                phone: cleanedPhone,
+                isFieldTech: true,
+            },
+            include: {
+                role: true,
+                tenant: true,
+                department: true,
+            },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException('Field technician profile not found');
+        }
+        const alg = 'HS256';
+        const jwt = await new jose_1.SignJWT({
+            sub: user.id,
+            phone: user.phone,
+            email: user.email,
+            tenantId: user.tenantId,
+            isFieldTech: true,
+            permissions: user.role?.permissions || [],
+            directPermissions: user.directPermissions || [],
+        })
+            .setProtectedHeader({ alg })
+            .setIssuedAt()
+            .setExpirationTime('30d')
+            .sign(this.jwtSecret);
+        const { passwordHash: _, ...userSafe } = user;
+        return {
+            accessToken: jwt,
+            user: {
+                ...userSafe,
+                tenantName: user.tenant?.name,
+                departmentName: user.department?.name,
+            },
+            requiresTermsAcknowledgment: !user.termsAcknowledged,
+        };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([

@@ -13,6 +13,10 @@ export declare class ServiceRequestService {
         customerRecordId: string;
         description: string;
         assetId: string | null;
+        urgency: import("@prisma/client").$Enums.UrgencyLevel;
+        preferredDate: Date | null;
+        preferredTimeSlot: string | null;
+        attachments: string[];
         jobId: string | null;
     }>;
     getRequests(tenantId: string): Promise<({
@@ -38,6 +42,10 @@ export declare class ServiceRequestService {
         customerRecordId: string;
         description: string;
         assetId: string | null;
+        urgency: import("@prisma/client").$Enums.UrgencyLevel;
+        preferredDate: Date | null;
+        preferredTimeSlot: string | null;
+        attachments: string[];
         jobId: string | null;
     })[]>;
     updateStatus(tenantId: string, requestId: string, updateDto: UpdateServiceRequestStatusDto): Promise<{
@@ -49,6 +57,10 @@ export declare class ServiceRequestService {
         customerRecordId: string;
         description: string;
         assetId: string | null;
+        urgency: import("@prisma/client").$Enums.UrgencyLevel;
+        preferredDate: Date | null;
+        preferredTimeSlot: string | null;
+        attachments: string[];
         jobId: string | null;
     }>;
 }

@@ -1,6 +1,7 @@
 import { JobService } from './job.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 export declare class JobController {
     private readonly jobService;
     constructor(jobService: JobService);
@@ -69,5 +70,18 @@ export declare class JobController {
         completedAt: Date | null;
         completionOtpExpiresAt: Date | null;
         paymentHoldStatus: string | null;
+    }>;
+    updateLocation(user: any, jobId: string, locationDto: UpdateLocationDto): Promise<{
+        success: boolean;
+        jobId: string;
+        technician: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            lastKnownLatitude: number | null;
+            lastKnownLongitude: number | null;
+            lastLocationUpdate: Date | null;
+        };
+        timestamp: Date;
     }>;
 }

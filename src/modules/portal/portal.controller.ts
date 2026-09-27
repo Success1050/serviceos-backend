@@ -7,6 +7,8 @@ import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { CreateServiceRequestDto } from '../service-request/dto/create-service-request.dto';
 import { AcceptQuoteDto } from './dto/accept-quote.dto';
+import { CreateCustomerTicketDto } from '../support-ticket/dto/create-customer-ticket.dto';
+import { CreateTicketMessageDto } from '../support-ticket/dto/create-ticket-message.dto';
 
 @Controller('portal/:slug')
 export class PortalController {
@@ -202,4 +204,74 @@ export class PortalController {
     }
     return this.portalService.getAssetDetails(user.tenantId, user.relationshipId, assetId);
   }
+
+  // ==========================================
+  // STAGE 26: CUSTOMER SUPPORT HUB & DISPUTES
+  // ==========================================
+
+  @Post('support/tickets')
+  @Permissions('customer_portal', 'admin_access')
+  async createSupportTicket(
+    @Param('slug') slug: string,
+    @CurrentUser() user: any,
+    @Body() createTicketDto: CreateCustomerTicketDto,
+  ) {
+    if (!user.tenantId || !user.relationshipId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    return this.portalService.createSupportTicket(user.tenantId, user.relationshipId, createTicketDto);
+  }
+
+  @Get('support/tickets')
+  @Permissions('customer_portal', 'admin_access')
+  async getSupportTickets(
+    @Param('slug') slug: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.tenantId || !user.relationshipId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    return this.portalService.getCustomerSupportTickets(user.tenantId, user.relationshipId);
+  }
+
+  @Get('support/tickets/:ticketId')
+  @Permissions('customer_portal', 'admin_access')
+  async getSupportTicketDetails(
+    @Param('slug') slug: string,
+    @Param('ticketId') ticketId: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.tenantId || !user.relationshipId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    return this.portalService.getSupportTicketDetails(user.tenantId, user.relationshipId, ticketId);
+  }
+
+  @Post('support/tickets/:ticketId/messages')
+  @Permissions('customer_portal', 'admin_access')
+  async postTicketMessage(
+    @Param('slug') slug: string,
+    @Param('ticketId') ticketId: string,
+    @CurrentUser() user: any,
+    @Body() createMessageDto: CreateTicketMessageDto,
+  ) {
+    if (!user.tenantId || !user.relationshipId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    return this.portalService.postTicketMessage(user.tenantId, user.relationshipId, ticketId, createMessageDto);
+  }
+
+  @Patch('support/tickets/:ticketId/close')
+  @Permissions('customer_portal', 'admin_access')
+  async closeCustomerTicket(
+    @Param('slug') slug: string,
+    @Param('ticketId') ticketId: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.tenantId || !user.relationshipId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    return this.portalService.closeCustomerTicket(user.tenantId, user.relationshipId, ticketId);
+  }
 }
+

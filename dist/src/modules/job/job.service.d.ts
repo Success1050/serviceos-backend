@@ -2,6 +2,7 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { PaymentService } from '../payment/payment.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 export declare class JobService {
     private readonly prisma;
     private readonly paymentService;
@@ -71,6 +72,19 @@ export declare class JobService {
         completedAt: Date | null;
         completionOtpExpiresAt: Date | null;
         paymentHoldStatus: string | null;
+    }>;
+    updateTechnicianLocation(tenantId: string, jobId: string, dto: UpdateLocationDto, user: any): Promise<{
+        success: boolean;
+        jobId: string;
+        technician: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            lastKnownLatitude: number | null;
+            lastKnownLongitude: number | null;
+            lastLocationUpdate: Date | null;
+        };
+        timestamp: Date;
     }>;
     private checkSchedulingConflicts;
 }

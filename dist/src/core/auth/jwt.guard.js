@@ -48,6 +48,7 @@ let JwtGuard = class JwtGuard {
                 directPermissions: payload.directPermissions || [],
                 relationshipId: payload.relationshipId,
                 phone: payload.phone,
+                role: payload.role,
             };
         }
         catch (err) {

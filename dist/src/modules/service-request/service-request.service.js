@@ -33,6 +33,10 @@ let ServiceRequestService = class ServiceRequestService {
                 description: createDto.description,
                 assetId: createDto.assetId,
                 status: 'OPEN',
+                urgency: createDto.urgency || 'NORMAL',
+                preferredDate: createDto.preferredDate ? new Date(createDto.preferredDate) : null,
+                preferredTimeSlot: createDto.preferredTimeSlot || null,
+                attachments: createDto.attachments || [],
             },
         });
     }

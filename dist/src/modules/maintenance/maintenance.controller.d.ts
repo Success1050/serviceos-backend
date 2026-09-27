@@ -21,8 +21,8 @@ export declare class MaintenanceController {
         customerRecordId: string;
         title: string;
         assetId: string | null;
-        intervalMonths: number;
         nextDueDate: Date;
+        intervalMonths: number;
         currentJobId: string | null;
     })[]>;
     createSchedule(user: any, customerId: string, dto: CreateMaintenanceScheduleDto): Promise<{
@@ -34,8 +34,8 @@ export declare class MaintenanceController {
         customerRecordId: string;
         title: string;
         assetId: string | null;
-        intervalMonths: number;
         nextDueDate: Date;
+        intervalMonths: number;
         currentJobId: string | null;
     }>;
     completeCycle(user: any, scheduleId: string): Promise<{
@@ -47,8 +47,8 @@ export declare class MaintenanceController {
         customerRecordId: string;
         title: string;
         assetId: string | null;
-        intervalMonths: number;
         nextDueDate: Date;
+        intervalMonths: number;
         currentJobId: string | null;
     }>;
 }

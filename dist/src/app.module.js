@@ -41,6 +41,8 @@ const internal_ticket_module_1 = require("./modules/internal-ticket/internal-tic
 const role_module_1 = require("./modules/role/role.module");
 const analytics_module_1 = require("./modules/analytics/analytics.module");
 const payment_module_1 = require("./modules/payment/payment.module");
+const support_ticket_module_1 = require("./modules/support-ticket/support-ticket.module");
+const hr_module_1 = require("./modules/hr/hr.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -80,6 +82,8 @@ exports.AppModule = AppModule = __decorate([
             user_module_1.UserModule,
             analytics_module_1.AnalyticsModule,
             payment_module_1.PaymentModule,
+            support_ticket_module_1.SupportTicketModule,
+            hr_module_1.HrModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [
