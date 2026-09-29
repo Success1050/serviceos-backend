@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { PaymentService } from '../payment/payment.service';
+import { SplitSettlementService } from '../wallet/services/split-settlement.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
@@ -10,6 +11,8 @@ export class JobService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentService: PaymentService,
+    @Inject(forwardRef(() => SplitSettlementService))
+    private readonly splitSettlementService?: SplitSettlementService,
   ) {}
 
   async createJob(tenantId: string, createJobDto: CreateJobDto) {
@@ -144,6 +147,15 @@ export class JobService {
         await this.paymentService.captureEscrowHoldForJob(job.id, job.tenantId);
       } catch (escrowErr: any) {
         console.error(`[STAGE 24 - ESCROW CAPTURE ERROR] Failed for job ${job.id}:`, escrowErr.message);
+      }
+
+      // Stage 28: Instant 3-Tier Split Settlement (HQ Royalties, Branch Profit, Tech Commission)
+      if (this.splitSettlementService) {
+        try {
+          await this.splitSettlementService.settleJobRevenue(job.id);
+        } catch (settleErr: any) {
+          console.error(`[STAGE 28 - SPLIT SETTLEMENT ERROR] Failed for job ${job.id}:`, settleErr.message);
+        }
       }
     }
 

@@ -47,6 +47,9 @@ model Tenant {
   paymentTransactions   PaymentTransaction[]
   supportTickets        SupportTicket[]
   hrDocuments           HrDocument[]
+  wallets               Wallet[]
+  payoutRequests        PayoutRequest[]
+  staffBankDetails      StaffBankDetail[]
 
   settings  TenantSettings?
   auditLogs AuditLog[]
@@ -108,6 +111,10 @@ model TenantSettings {
   scheduling      Json?
   technicians     Json?
   lockedSettings  Json? // Fields that HQ forces onto sub-companies (e.g. ['branding', 'businessProfile'])
+
+  // Stage 28: Franchise Royalties
+  franchiseRoyaltyRate Decimal? @db.Decimal(5, 2) // e.g. 5.00 for 5%
+  royaltyType          String?  @default("PERCENTAGE") // PERCENTAGE or FLAT
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -214,6 +221,12 @@ model User {
   hrDocuments                 HrDocument[]            @relation("TechnicianHrFiles")
   uploadedHrDocuments         HrDocument[]            @relation("UploadedHrDocuments")
   verifiedHrDocuments         HrDocument[]            @relation("VerifiedHrDocuments")
+
+  // Stage 28: Fintech Wallets & Payouts
+  wallet                      Wallet?
+  payoutRequests              PayoutRequest[]         @relation("UserPayoutRequests")
+  reviewedPayouts             PayoutRequest[]         @relation("ReviewedPayouts")
+  bankDetails                 StaffBankDetail[]
 
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -426,6 +439,7 @@ model Invoice {
   quoteMilestone      QuoteMilestone?
   paymentTransactions PaymentTransaction[]
   supportTickets      SupportTicket[]
+  walletTransactions  WalletTransaction[]
 
   dueDate DateTime?
   paidAt  DateTime?
@@ -473,14 +487,17 @@ model Job {
   completionOtpExpiresAt DateTime?
   paymentHoldStatus      String? // HOLD_PENDING, HELD, HOLD_FAILED, CAPTURED
   escrowHolds            EscrowHold[]
+  splitSettled           Boolean      @default(false)
+  splitSettledAt         DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices        Invoice[]
-  serviceRequests ServiceRequest[]
-  expenseReceipts ExpenseReceipt[]
-  supportTickets  SupportTicket[]
+  invoices           Invoice[]
+  serviceRequests    ServiceRequest[]
+  expenseReceipts    ExpenseReceipt[]
+  supportTickets     SupportTicket[]
+  walletTransactions WalletTransaction[]
 
   @@index([tenantId])
 }
@@ -1045,4 +1062,174 @@ model HrDocument {
   @@index([userId])
   @@index([documentType])
 }
+
+// ------------------------------------------------------
+// STAGE 28: FINTECH WALLETS & MULTI-TENANT PAYROLL
+// ------------------------------------------------------
+
+enum WalletType {
+  HQ
+  BRANCH
+  STAFF
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+  RESTRICTED
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum WalletTransactionCategory {
+  JOB_SETTLEMENT
+  ROYALTY_SPLIT
+  COMMISSION_EARNED
+  PAYOUT_REQUEST
+  PAYOUT_SETTLED
+  PAYOUT_REVERSED
+  EXPENSE_REIMBURSEMENT
+  MANUAL_ADJUSTMENT
+}
+
+enum PayoutStatus {
+  PENDING_APPROVAL
+  APPROVED
+  PROCESSING
+  SUCCESSFUL
+  REJECTED
+  FAILED
+}
+
+model Wallet {
+  id            String         @id @default(uuid())
+  type          WalletType
+  tenantId      String?
+  tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId        String?        @unique
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  currency      String         @default("NGN")
+  balance       Decimal        @default(0.00) @db.Decimal(14, 2)
+  ledgerBalance Decimal        @default(0.00) @db.Decimal(14, 2)
+  lockedBalance Decimal        @default(0.00) @db.Decimal(14, 2)
+  status        WalletStatus   @default(ACTIVE)
+
+  transactions  WalletTransaction[]
+  payoutRequests PayoutRequest[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([tenantId, type], map: "unique_tenant_wallet_type")
+  @@index([tenantId])
+  @@index([status])
+}
+
+model WalletTransaction {
+  id             String                    @id @default(uuid())
+  walletId       String
+  wallet         Wallet                    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type           WalletTransactionType
+  category       WalletTransactionCategory
+  amount         Decimal                   @db.Decimal(14, 2)
+  balanceBefore  Decimal                   @db.Decimal(14, 2)
+  balanceAfter   Decimal                   @db.Decimal(14, 2)
+
+  reference      String                    @unique
+  description    String
+
+  jobId          String?
+  job            Job?                      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  invoiceId      String?
+  invoice        Invoice?                  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  payoutRequestId String?
+  payoutRequest  PayoutRequest?            @relation(fields: [payoutRequestId], references: [id], onDelete: SetNull)
+
+  metadata       Json?
+
+  createdAt      DateTime                  @default(now())
+
+  @@index([walletId, createdAt])
+  @@index([reference])
+  @@index([jobId])
+  @@index([category])
+}
+
+model StaffBankDetail {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tenantId      String
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  bankName      String
+  bankCode      String
+  accountNumber String
+  accountName   String
+  recipientCode String?         // Paystack Transfer Recipient Code RCP_...
+  isDefault     Boolean         @default(true)
+  isVerified    Boolean         @default(true)
+
+  payoutRequests PayoutRequest[]
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([userId, accountNumber, bankCode])
+  @@index([userId])
+  @@index([tenantId])
+}
+
+model PayoutRequest {
+  id              String             @id @default(uuid())
+  walletId        String
+  wallet          Wallet             @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  userId          String
+  user            User               @relation("UserPayoutRequests", fields: [userId], references: [id], onDelete: Cascade)
+
+  tenantId        String
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  bankDetailId    String
+  bankDetail      StaffBankDetail    @relation(fields: [bankDetailId], references: [id], onDelete: Restrict)
+
+  amount          Decimal            @db.Decimal(14, 2)
+  fee             Decimal            @default(0.00) @db.Decimal(10, 2)
+  currency        String             @default("NGN")
+  status          PayoutStatus       @default(PENDING_APPROVAL)
+
+  reference       String             @unique
+  transferCode    String?            // Paystack TRF_...
+
+  reviewedById    String?
+  reviewedBy      User?              @relation("ReviewedPayouts", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+  reviewNotes     String?            @db.Text
+  rejectionReason String?            @db.Text
+  failureReason   String?            @db.Text
+  settledAt       DateTime?
+
+  metadata        Json?
+
+  walletTransactions WalletTransaction[]
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([tenantId, status])
+  @@index([userId])
+  @@index([walletId])
+  @@index([reference])
+}
+
 

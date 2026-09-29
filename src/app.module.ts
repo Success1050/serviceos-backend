@@ -34,6 +34,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { SupportTicketModule } from './modules/support-ticket/support-ticket.module';
 import { HrModule } from './modules/hr/hr.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { HrModule } from './modules/hr/hr.module';
     PaymentModule,
     SupportTicketModule,
     HrModule,
+    WalletModule,
   ],
   controllers: [AppController],
   providers: [

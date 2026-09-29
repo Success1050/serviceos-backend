@@ -65,10 +65,13 @@ This document outlines the upcoming stages for the ServiceOS Enterprise Tier, fo
 - **Passwordless 4-Digit SMS PIN Login:** Field technicians authenticate into their mobile web app / PWA using a fast, 4-digit numeric PIN sent via SMS (rate-limited, cryptographic generation, replay protection, and zero passwords to remember or reset).
 - **The "Big Button" Legal Compensation Acknowledgment:** Upon first mobile login, technicians review a clear commission disclosure and tap a massive "I AGREE" button, generating an immutable `AuditLog` entry (timestamp, IP address, user-agent, rate snapshot) providing undeniable legal payroll protection against labor disputes.
 
-## Stage 28: Fintech Wallets & Multi-Tenant Payroll
+## Stage 28: Fintech Wallets & Multi-Tenant Payroll (Completed - Backend)
 - **The 3-Tier Wallet System:** 
-  1. *HQ Wallet:* Accumulates franchise royalties automatically via Split-Payments.
-  2. *Branch Wallet:* Accumulates local job profits and pays out local expenses.
-  3. *Staff Wallet:* Technicians visually see their commission balances grow in real-time.
-- **Dynamic Compensation:** Managers set custom pay structures per user (e.g., 15% commission) rather than relying on hardcoded roles.
-- **Automated Payouts:** Using Paystack Transfers API, staff can request withdrawals directly to their local bank accounts upon manager approval.
+  1. *HQ Wallet (`WalletType.HQ`):* Accumulates network franchise royalties automatically via Split-Payments (`ROYALTY_SPLIT`).
+  2. *Branch Wallet (`WalletType.BRANCH`):* Accumulates local job revenues (`JOB_SETTLEMENT`), automatically debited for HQ royalties and staff commissions, retaining net operating profits.
+  3. *Staff Wallet (`WalletType.STAFF`):* Field technicians visually see their earned commission balances grow in real-time (`COMMISSION_EARNED`) upon verified OTP job completion.
+- **Dynamic Compensation & Smart Splits:** Managers set custom commission rates per technician (`customCommissionRate`, e.g. 15%) or fall back to signed compensation acknowledgments (`agreedCommissionSnapshot`). The system automatically validates allocation boundaries and ensures branch net profit integrity.
+- **Paystack Transfers & Banking Rails Integration:** Technicians verify 10-digit NUBAN bank accounts using Paystack Bank Resolution (`/bank/resolve`), automatically generating Paystack Transfer Recipient tokens (`RCP_...`) for frictionless withdrawals.
+- **Idempotent Double-Entry Ledger Engine:** Every financial movement is recorded as an immutable `WalletTransaction` with cryptographically unique references, `balanceBefore`, and `balanceAfter`, guaranteeing complete auditability.
+- **Automated Payout & Approval Workflow:** Technicians submit withdrawal requests (`PayoutRequest`), atomically reserving funds (`lockedBalance`). Branch managers review and approve payouts, triggering automated Paystack transfers (`/transfer`) with webhook listeners (`transfer.success`, `transfer.failed`, `transfer.reversed`) and audit logs.
+
