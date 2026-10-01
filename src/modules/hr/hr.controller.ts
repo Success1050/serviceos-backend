@@ -7,8 +7,11 @@ import { UploadHrDocumentDto } from './dto/upload-hr-document.dto';
 import { ReviewProxyVerificationDto } from './dto/review-proxy-verification.dto';
 import { FilterTechniciansDto } from './dto/filter-technicians.dto';
 import { AcknowledgeTermsDto } from './dto/acknowledge-terms.dto';
+import { ServiceModule } from '@prisma/client';
+import { RequireModule } from '../../core/decorators/require-module.decorator';
 
 @Controller('hr')
+@RequireModule(ServiceModule.MODULE_BLUE_COLLAR_HR)
 export class HrController {
   constructor(private readonly hrService: HrService) {}
 

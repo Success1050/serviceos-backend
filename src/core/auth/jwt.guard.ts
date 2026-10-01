@@ -44,6 +44,9 @@ export class JwtGuard implements CanActivate {
         relationshipId: payload.relationshipId,
         phone: payload.phone,
         role: payload.role,
+        isSuperAdmin: Boolean(payload.isSuperAdmin),
+        isImpersonating: Boolean(payload.isImpersonating),
+        impersonatedBy: payload.impersonatedBy,
       };
     } catch (err) {
       throw new UnauthorizedException('Invalid or expired authentication token');

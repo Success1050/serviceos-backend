@@ -1,11 +1,13 @@
-﻿import { Controller, Post, Get, Body, Param, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, BadRequestException } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { Permissions } from '../../core/decorators/permissions.decorator';
-import { Role } from '@prisma/client';
+import { Role, ServiceModule } from '@prisma/client';
+import { RequireModule } from '../../core/decorators/require-module.decorator';
 
 @Controller('quotes')
+@RequireModule(ServiceModule.MODULE_QUOTES)
 export class QuoteController {
   constructor(private readonly quoteService: QuoteService) {}
 

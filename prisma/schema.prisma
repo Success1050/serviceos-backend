@@ -53,6 +53,11 @@ model Tenant {
 
   settings  TenantSettings?
   auditLogs AuditLog[]
+
+  // Stage 29: SuperAdmin Governance & Subscriptions
+  isSuspended      Boolean             @default(false)
+  suspensionReason String?
+  subscription     TenantSubscription?
 }
 
 enum AnnouncementPriority {
@@ -227,6 +232,9 @@ model User {
   payoutRequests              PayoutRequest[]         @relation("UserPayoutRequests")
   reviewedPayouts             PayoutRequest[]         @relation("ReviewedPayouts")
   bankDetails                 StaffBankDetail[]
+
+  // Stage 29: Platform SuperAdmin
+  isSuperAdmin                Boolean                 @default(false)
 
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -1230,6 +1238,92 @@ model PayoutRequest {
   @@index([userId])
   @@index([walletId])
   @@index([reference])
+}
+
+// ------------------------------------------------------
+// STAGE 29: SUPERADMIN & SUBSCRIPTION GATING
+// ------------------------------------------------------
+
+enum ServiceModule {
+  MODULE_CRM
+  MODULE_QUOTES
+  MODULE_INVOICES
+  MODULE_DISPATCH
+  MODULE_WAREHOUSE
+  MODULE_CUSTOMER_PORTAL
+  MODULE_SUPPORT_DESK
+  MODULE_BLUE_COLLAR_HR
+  MODULE_FINTECH_WALLETS
+  MODULE_ENTERPRISE_HQ
+}
+
+enum SubscriptionTier {
+  STARTER
+  GROWTH
+  ENTERPRISE
+  CUSTOM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  SUSPENDED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+model SubscriptionPlan {
+  id                String            @id @default(uuid())
+  slug              String            @unique
+  name              String
+  tier              SubscriptionTier  @default(GROWTH)
+  description       String?
+  priceMonthly      Decimal           @db.Decimal(10, 2)
+  priceAnnual       Decimal           @db.Decimal(10, 2)
+  currency          String            @default("USD")
+  
+  maxSeats          Int               @default(5)
+  maxTechnicians    Int               @default(10)
+  maxBranches       Int               @default(1)
+  
+  enabledModules    ServiceModule[]
+  isActive          Boolean           @default(true)
+
+  subscriptions     TenantSubscription[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+model TenantSubscription {
+  id                      String             @id @default(uuid())
+  tenantId                String             @unique
+  planId                  String
+  status                  SubscriptionStatus @default(ACTIVE)
+  billingCycle            BillingCycle       @default(MONTHLY)
+  
+  currentPeriodStart      DateTime           @default(now())
+  currentPeriodEnd        DateTime
+  cancelAtPeriodEnd       Boolean            @default(false)
+
+  customSeatQuota         Int?
+  customTechnicianQuota   Int?
+  customBranchQuota       Int?
+  additionalModules       ServiceModule[]    @default([])
+  disabledModules         ServiceModule[]    @default([])
+
+  tenant                  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan                    SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@index([planId])
+  @@index([status])
 }
 
 

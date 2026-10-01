@@ -72,7 +72,8 @@ export class AuthService {
       email: user.email, 
       tenantId: user.tenantId,
       permissions: user.role?.permissions || [],
-      directPermissions: user.directPermissions || []
+      directPermissions: user.directPermissions || [],
+      isSuperAdmin: user.isSuperAdmin,
     })
       .setProtectedHeader({ alg })
       .setIssuedAt()

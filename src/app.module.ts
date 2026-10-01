@@ -35,6 +35,8 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { SupportTicketModule } from './modules/support-ticket/support-ticket.module';
 import { HrModule } from './modules/hr/hr.module';
 import { WalletModule } from './modules/wallet/wallet.module';
+import { SuperAdminModule } from './modules/superadmin/superadmin.module';
+import { ModuleGuard } from './core/auth/module.guard';
 
 @Module({
   imports: [
@@ -74,6 +76,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
     SupportTicketModule,
     HrModule,
     WalletModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [
@@ -85,6 +88,10 @@ import { WalletModule } from './modules/wallet/wallet.module';
     {
       provide: APP_GUARD,
       useClass: PermissionsGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ModuleGuard,
     },
   ],
 })

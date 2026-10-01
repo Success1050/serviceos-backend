@@ -8,8 +8,11 @@ import { FilterTicketsDto } from './dto/filter-tickets.dto';
 import { ResolveWarrantyDto } from './dto/resolve-warranty.dto';
 import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
+import { ServiceModule } from '@prisma/client';
+import { RequireModule } from '../../core/decorators/require-module.decorator';
 
 @Controller('support-tickets')
+@RequireModule(ServiceModule.MODULE_SUPPORT_DESK)
 export class SupportTicketController {
   constructor(private readonly supportTicketService: SupportTicketService) {}
 

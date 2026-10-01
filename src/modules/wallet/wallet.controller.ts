@@ -25,9 +25,12 @@ import { ReviewPayoutDto, RejectPayoutDto } from './dto/review-payout.dto';
 import { FilterTransactionsDto } from './dto/filter-transactions.dto';
 import { FilterPayoutsDto } from './dto/filter-payouts.dto';
 import { SettleJobDto } from './dto/settle-job.dto';
+import { ServiceModule } from '@prisma/client';
+import { RequireModule } from '../../core/decorators/require-module.decorator';
 
 @Controller('wallet')
 @UseGuards(JwtGuard, PermissionsGuard)
+@RequireModule(ServiceModule.MODULE_FINTECH_WALLETS)
 export class WalletController {
   constructor(
     private readonly walletService: WalletService,
@@ -107,7 +110,7 @@ export class WalletController {
    */
   @Get('payout-requests')
   async getPayoutRequests(@CurrentUser() user: any, @Query() dto: FilterPayoutsDto) {
-    return this.payoutService.getPayoutRequests(user, dto);
+    return this.walletService.getPayoutRequests(user, dto);
   }
 
   /**
