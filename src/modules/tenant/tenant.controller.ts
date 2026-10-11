@@ -1,4 +1,4 @@
-﻿import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { Public } from '../../core/decorators/public.decorator';
@@ -17,6 +17,12 @@ export class TenantController {
   }
 
   @Public()
+  @Get('check-slug/:slug')
+  async checkSlug(@Param('slug') slug: string) {
+    return this.tenantService.checkSlugAvailability(slug);
+  }
+
+  @Public()
   @Get('s/:slug')
   async getBySlug(@Param('slug') slug: string) {
     return this.tenantService.getTenantBySlug(slug);
@@ -27,9 +33,13 @@ export class TenantController {
     @Body() createTenantDto: CreateTenantDto,
     @CurrentUser() user: any,
   ) {
-    if (!user.tenantId || (user.role !== 'TENANT_OWNER' && user.role !== 'TENANT_ADMIN')) {
+    if (!user.tenantId && !user.isSuperAdmin) {
       throw new Error('Unauthorized to create sub-companies for this tenant');
     }
-    return this.tenantService.createSubCompany(user.tenantId, createTenantDto);
+    const targetParentId = user.tenantId || createTenantDto.parentId;
+    if (!targetParentId) {
+      throw new Error('Parent tenant ID is required to create a sub-company');
+    }
+    return this.tenantService.createSubCompany(targetParentId, createTenantDto);
   }
 }

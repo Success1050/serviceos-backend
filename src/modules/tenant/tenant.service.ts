@@ -1,10 +1,16 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { MailService } from '../../core/mail/mail.service';
+import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class TenantService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   async createTenant(createTenantDto: CreateTenantDto, ownerId: string) {
     // Check if slug already exists
@@ -31,13 +37,27 @@ export class TenantService {
 
     // Create Tenant, initialize settings, and assign owner in one transaction
     const result = await this.prisma.$transaction(async (tx) => {
+      const isHq = Boolean(createTenantDto.isHq);
+      const parentId = createTenantDto.parentId || null;
+
       const tenant = await tx.tenant.create({
         data: {
           name: createTenantDto.name,
           slug: createTenantDto.slug,
+          parentId,
           settings: {
             create: {
-              businessProfile: { companyName: createTenantDto.name },
+              businessProfile: {
+                companyName: createTenantDto.name,
+                industry: createTenantDto.industry || 'Solar & Energy',
+                phone: createTenantDto.phone || null,
+                address: createTenantDto.address || null,
+                currency: createTenantDto.currency || 'NGN',
+                taxRate: createTenantDto.taxRate ?? 7.5,
+                timezone: createTenantDto.timezone || 'Africa/Lagos',
+                isHq,
+                entityType: isHq ? 'FRANCHISE_HQ' : parentId ? 'SUB_COMPANY' : 'SINGLE',
+              },
               branding: {},
               portal: { enabled: true, welcomeMessage: `Welcome to ${createTenantDto.name}` },
             },
@@ -45,21 +65,78 @@ export class TenantService {
         },
         include: {
           settings: true,
+          children: true,
         },
       });
+
+      // Role assignment: HQ_ADMIN if Corporate Franchise HQ, otherwise TENANT_OWNER
+      const roleName = isHq ? 'HQ_ADMIN' : 'TENANT_OWNER';
+      let assignedRole = await tx.role.findFirst({
+        where: { name: roleName, tenantId: tenant.id },
+      });
+      if (!assignedRole) {
+        assignedRole = await tx.role.create({
+          data: {
+            name: roleName,
+            permissions: ['*'],
+            tenantId: tenant.id,
+          },
+        });
+      }
 
       await tx.user.update({
         where: { id: user.id },
         data: {
           tenantId: tenant.id,
-          directPermissions: ['admin_access'],
+          roleId: assignedRole.id,
+          directPermissions: isHq ? ['admin_access', 'view_hq_analytics'] : ['admin_access'],
         },
       });
+
+      // If HQ specified an initial sub-company/branch, auto-provision it
+      if (isHq && createTenantDto.initialBranchName) {
+        const branchClean = createTenantDto.initialBranchName
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '');
+        const branchSlug = `${tenant.slug}-${branchClean || 'branch-1'}`;
+
+        await tx.tenant.create({
+          data: {
+            name: createTenantDto.initialBranchName,
+            slug: branchSlug,
+            parentId: tenant.id,
+            settings: {
+              create: {
+                businessProfile: {
+                  companyName: createTenantDto.initialBranchName,
+                  industry: createTenantDto.industry || 'Solar & Energy',
+                  entityType: 'SUB_COMPANY',
+                },
+                branding: {},
+                portal: { enabled: true, welcomeMessage: `Welcome to ${createTenantDto.initialBranchName}` },
+              },
+            },
+          },
+        });
+      }
 
       return tenant;
     });
 
     return result;
+  }
+
+  async checkSlugAvailability(slug: string): Promise<{ available: boolean; slug: string }> {
+    const existing = await this.prisma.tenant.findUnique({
+      where: { slug: slug.toLowerCase() },
+      select: { id: true },
+    });
+    return {
+      available: !existing,
+      slug: slug.toLowerCase(),
+    };
   }
 
   async createSubCompany(parentId: string, createTenantDto: CreateTenantDto) {
@@ -87,7 +164,11 @@ export class TenantService {
         parentId: parent.id,
         settings: {
           create: {
-            businessProfile: { companyName: createTenantDto.name },
+            businessProfile: {
+              companyName: createTenantDto.name,
+              industry: createTenantDto.industry || 'Solar & Energy',
+              entityType: 'SUB_COMPANY',
+            },
             branding: {},
             portal: { enabled: true, welcomeMessage: `Welcome to ${createTenantDto.name}` },
           },
@@ -98,7 +179,71 @@ export class TenantService {
       },
     });
 
-    return tenant;
+    // Ensure TENANT_OWNER role exists for this new subcompany branch
+    let ownerRole = await this.prisma.role.findFirst({
+      where: { name: 'TENANT_OWNER', tenantId: tenant.id },
+    });
+    if (!ownerRole) {
+      ownerRole = await this.prisma.role.create({
+        data: {
+          name: 'TENANT_OWNER',
+          permissions: ['*'],
+          tenantId: tenant.id,
+        },
+      });
+    }
+
+    let managerCredentials: { email: string; tempPassword: string } | null = null;
+
+    // If a branch manager email is provided, create the account and send the welcome email with temp password
+    if (createTenantDto.managerEmail) {
+      const tempPassword = crypto.randomBytes(6).toString('hex').toUpperCase(); // e.g. 'A1B2C3D4E5F6'
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(tempPassword, salt);
+
+      await this.prisma.user.upsert({
+        where: { email: createTenantDto.managerEmail },
+        update: {
+          passwordHash,
+          tenantId: tenant.id,
+          roleId: ownerRole.id,
+          status: 'ACTIVE',
+          requiresPasswordReset: true,
+        },
+        create: {
+          email: createTenantDto.managerEmail,
+          firstName: createTenantDto.managerName || 'Branch',
+          lastName: 'Manager',
+          passwordHash,
+          tenantId: tenant.id,
+          roleId: ownerRole.id,
+          status: 'ACTIVE',
+          requiresPasswordReset: true,
+        },
+      });
+
+      // Send the activation email with temporary password
+      try {
+        await this.mailService.sendStaffTemporaryPassword(
+          createTenantDto.managerEmail,
+          createTenantDto.managerName || 'Branch Manager',
+          tempPassword,
+          tenant.name,
+        );
+      } catch (err) {
+        // Fallback logger is handled in mailService, ensure creation doesn't crash in local dev
+      }
+
+      managerCredentials = {
+        email: createTenantDto.managerEmail,
+        tempPassword,
+      };
+    }
+
+    return {
+      ...tenant,
+      manager: managerCredentials,
+    };
   }
 
   async getTenantBySlug(slug: string) {

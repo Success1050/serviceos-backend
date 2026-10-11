@@ -49,7 +49,18 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: loginDto.email },
-      include: { role: true }
+      include: {
+        role: true,
+        tenant: {
+          include: {
+            settings: true,
+            children: {
+              select: { id: true, name: true, slug: true },
+            },
+          },
+        },
+        department: true,
+      },
     });
 
     if (!user) {
@@ -61,9 +72,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.requiresPasswordReset) {
-      throw new ForbiddenException('PASSWORD_RESET_REQUIRED');
-    }
+    const roleName = user.role?.name || (user.isSuperAdmin ? 'PLATFORM_ADMIN' : 'TENANT_OWNER');
 
     // Generate JWT with jose
     const alg = 'HS256';
@@ -71,20 +80,68 @@ export class AuthService {
       sub: user.id, 
       email: user.email, 
       tenantId: user.tenantId,
+      parentId: user.tenant?.parentId || null,
       permissions: user.role?.permissions || [],
       directPermissions: user.directPermissions || [],
-      isSuperAdmin: user.isSuperAdmin,
+      isSuperAdmin: Boolean(user.isSuperAdmin),
+      role: roleName,
     })
       .setProtectedHeader({ alg })
       .setIssuedAt()
       .setExpirationTime('24h')
       .sign(this.jwtSecret);
 
-    const { passwordHash: _, ...result } = user;
+    const { passwordHash: _, tenant, ...result } = user;
     
     return {
-      user: result,
+      user: {
+        ...result,
+        role: roleName,
+        permissions: [...(user.role?.permissions || []), ...(user.directPermissions || [])],
+      },
+      tenant: tenant || null,
       accessToken: jwt,
+    };
+  }
+
+  /**
+   * Day 2 Integration: Hydrate active user session & tenant context
+   */
+  async getMe(currentUser: any) {
+    if (!currentUser?.id) {
+      throw new UnauthorizedException('User identity not resolved');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: {
+        role: true,
+        tenant: {
+          include: {
+            settings: true,
+            children: {
+              select: { id: true, name: true, slug: true },
+            },
+          },
+        },
+        department: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User profile not found');
+    }
+
+    const roleName = user.role?.name || (user.isSuperAdmin ? 'PLATFORM_ADMIN' : 'TENANT_OWNER');
+    const { passwordHash: _, tenant, ...safeUser } = user;
+
+    return {
+      user: {
+        ...safeUser,
+        role: roleName,
+        permissions: [...(user.role?.permissions || []), ...(user.directPermissions || [])],
+      },
+      tenant: tenant || null,
     };
   }
 
