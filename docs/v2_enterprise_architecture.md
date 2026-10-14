@@ -75,3 +75,33 @@ This document outlines the upcoming stages for the ServiceOS Enterprise Tier, fo
 - **Idempotent Double-Entry Ledger Engine:** Every financial movement is recorded as an immutable `WalletTransaction` with cryptographically unique references, `balanceBefore`, and `balanceAfter`, guaranteeing complete auditability.
 - **Automated Payout & Approval Workflow:** Technicians submit withdrawal requests (`PayoutRequest`), atomically reserving funds (`lockedBalance`). Branch managers review and approve payouts, triggering automated Paystack transfers (`/transfer`) with webhook listeners (`transfer.success`, `transfer.failed`, `transfer.reversed`) and audit logs.
 
+## Stage 29: SuperAdmin Control Plane, Subscription Tiers & Module Feature-Gating (Completed - Backend)
+- **Platform Owner Root Authority:** The `SUPERADMIN` (`PLATFORM_ADMIN`) is the master owner of the ServiceOS SaaS platform, operating above individual tenants with global governance, platform telemetry, and billing control.
+- **Full Hierarchy Visibility (Parent Enterprises & Nested Sub-Companies):**
+  - SuperAdmin can view, search, and inspect the entire multi-tenant tree:
+    - Root Platform → Parent Tenants (Corporate Franchisors, e.g. Sunshine Solar Global) → Child Tenants / Sub-Companies (e.g. Lagos Island Branch, Abuja Branch, Port Harcourt Branch).
+  - Inspect aggregate operational volume, active technician headcounts, and monthly revenue generated across each parent enterprise and all its child sub-companies.
+- **Audited 1-Click Tenant Impersonation:**
+  - SuperAdmin can generate short-lived, cryptographically audited impersonation tokens to log into any parent tenant or child sub-company context directly to investigate issues, debug dispatch queues, or provide white-glove technical assistance.
+  - All impersonation actions are recorded with `AuditLog` entries specifying the SuperAdmin's real ID, timestamp, and target tenant.
+- **Subscription Tier Modeling & Cascading Rules:**
+  - Introduce `SubscriptionPlan` model with predefined plans (`STARTER`, `GROWTH`, `ENTERPRISE`, plus custom enterprise contracts).
+  - Tiers can be assigned to a Parent Tenant and automatically cascade down to all its sub-companies, with optional per-branch feature overrides.
+- **Dynamic Module Restriction & Feature Gating:**
+  - Granular restriction of business modules based on active subscription tier:
+    1. `MODULE_CRM` (Customer CRM & CSV/Excel Import)
+    2. `MODULE_QUOTES` (Quote Builder & PDF Engine)
+    3. `MODULE_INVOICES` (Invoicing & Multi-Gateway Checkout)
+    4. `MODULE_DISPATCH` (Smart Scheduling Calendar & GPS Conflict Engine)
+    5. `MODULE_WAREHOUSE` (Virtual Trucks & Warehouse Inventory)
+    6. `MODULE_CUSTOMER_PORTAL` (White-Labeled Customer Portal `/s/:slug`)
+    7. `MODULE_SUPPORT_DESK` (Ticketing, Warranty Claims & Charge Disputes)
+    8. `MODULE_BLUE_COLLAR_HR` (Phone-Only Onboarding & SMS PIN Auth)
+    9. `MODULE_FINTECH_WALLETS` (3-Tier Wallets, Paystack Split Settlements & Payroll)
+    10. `MODULE_ENTERPRISE_HQ` (Franchise Hierarchy, God-View & Royalties)
+- **Declarative Guard (`@RequireModule('MODULE_KEY')`):**
+  - NestJS guard attached to controllers/endpoints verifying that the caller's tenant has the required module enabled in their subscription tier or tenant override.
+  - If a module is restricted, throws HTTP 402 `PaymentRequiredException` (`"Module restricted by active subscription tier. Contact your administrator or upgrade your plan."`).
+- **SuperAdmin Control Plane API:**
+  - Dedicated SuperAdmin endpoints to toggle module gates per tenant, adjust seat/technician quotas, suspend an entire franchise network or single rogue branch, and view network-wide MRR telemetry.
+

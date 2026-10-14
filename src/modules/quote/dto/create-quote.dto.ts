@@ -49,4 +49,8 @@ export class CreateQuoteDto {
   @ValidateNested({ each: true })
   @Type(() => CreateMilestoneItemDto)
   milestones?: CreateMilestoneItemDto[];
+
+  @IsString()
+  @IsOptional()
+  tenantId?: string;
 }

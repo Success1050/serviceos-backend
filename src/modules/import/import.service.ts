@@ -1,4 +1,6 @@
-﻿import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { AnalyzeImportDto } from './dto/analyze-import.dto';
 import { PreviewImportDto } from './dto/preview-import.dto';
@@ -6,7 +8,10 @@ import { ExecuteImportDto, DuplicateRule } from './dto/execute-import.dto';
 
 @Injectable()
 export class ImportService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue('customer-import-queue') private readonly importQueue: Queue,
+  ) {}
 
   // 1. Analyze and guess columns
   analyzeColumns(analyzeDto: AnalyzeImportDto) {
@@ -205,4 +210,71 @@ export class ImportService {
       invalid: previewResult.invalid.length,
     };
   }
+
+  // 5. Enqueue Large Import as Background Bull Job
+  async queueImport(
+    tenantId: string,
+    executeDto: ExecuteImportDto,
+    activationChoice: 'ALL' | 'PHONE_ONLY' | 'NONE' = 'ALL',
+  ) {
+    const job = await this.importQueue.add(
+      'process-customer-import',
+      {
+        tenantId,
+        rows: executeDto.rows,
+        mapping: executeDto.mapping,
+        duplicateRule: executeDto.duplicateRule,
+        activationChoice,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
+      },
+    );
+
+    return {
+      jobId: String(job.id),
+      status: 'QUEUED',
+      message: `Enqueued ${executeDto.rows.length} customer records for background processing.`,
+    };
+  }
+
+  // 6. Check Background Job Status & Progress
+  async getJobStatus(jobId: string) {
+    const job = await this.importQueue.getJob(jobId);
+    if (!job) {
+      throw new NotFoundException(`Background job #${jobId} not found`);
+    }
+
+    const state = await job.getState();
+    const progress = job.progress();
+    const failedReason = job.failedReason;
+    const returnvalue = job.returnvalue;
+
+    return {
+      jobId: String(job.id),
+      state, // 'waiting' | 'active' | 'completed' | 'failed' | 'delayed'
+      progress: typeof progress === 'number' ? progress : 0,
+      failedReason,
+      result: returnvalue || null,
+    };
+  }
+
+  // 7. Enqueue Bulk Customer Invitations
+  async queueBatchInvitations(tenantId: string, customerIds: string[]) {
+    const job = await this.importQueue.add(
+      'dispatch-batch-invitations',
+      { tenantId, customerIds },
+      { attempts: 2, removeOnComplete: 100 },
+    );
+
+    return {
+      jobId: String(job.id),
+      status: 'QUEUED',
+      message: `Enqueued portal invitations for ${customerIds.length} customers.`,
+    };
+  }
 }
+

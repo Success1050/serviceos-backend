@@ -1,4 +1,5 @@
-﻿import { IsNotEmpty, IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsDateString, IsEnum } from 'class-validator';
+import { AssetStatus } from '@prisma/client';
 
 export class CreateAssetDto {
   @IsString()
@@ -21,7 +22,23 @@ export class CreateAssetDto {
   @IsOptional()
   installDate?: string;
 
+  @IsDateString()
+  @IsOptional()
+  warrantyExpiresAt?: string;
+
+  @IsString()
+  @IsOptional()
+  warrantyDocumentUrl?: string;
+
+  @IsEnum(AssetStatus)
+  @IsOptional()
+  status?: AssetStatus;
+
   @IsString()
   @IsNotEmpty()
   customerRecordId: string;
+
+  @IsString()
+  @IsOptional()
+  tenantId?: string;
 }
