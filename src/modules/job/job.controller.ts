@@ -18,7 +18,7 @@ export class JobController {
     @Body() createJobDto: CreateJobDto,
   ) {
     if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
-    return this.jobService.createJob(user.tenantId, createJobDto);
+    return this.jobService.createJob(user.tenantId, createJobDto, user);
   }
 
   @Get()

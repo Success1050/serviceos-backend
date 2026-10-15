@@ -27,4 +27,7 @@ export class CreateJobDto {
   @IsOptional()
   @IsInt()
   estimatedDuration?: number;
+
+  @IsOptional()
+  ignoreConflict?: boolean;
 }

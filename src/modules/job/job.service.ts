@@ -5,6 +5,7 @@ import { SplitSettlementService } from '../wallet/services/split-settlement.serv
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { TenancyUtil } from '../../core/shared/utils/tenancy.util';
 
 @Injectable()
 export class JobService {
@@ -15,30 +16,50 @@ export class JobService {
     private readonly splitSettlementService?: SplitSettlementService,
   ) {}
 
-  async createJob(tenantId: string, createJobDto: CreateJobDto) {
-    // 1. Verify customer record belongs to tenant
+  async createJob(tenantId: string, createJobDto: CreateJobDto, user?: any) {
+    // 1. Verify customer record belongs to tenant or authorized franchise hierarchy
     const customer = await this.prisma.customerRecord.findUnique({
       where: { id: createJobDto.customerRecordId },
+      include: { tenant: true },
     });
 
-    if (!customer || customer.tenantId !== tenantId) {
-      throw new NotFoundException('Customer record not found for this tenant');
+    if (!customer) {
+      throw new NotFoundException('Customer record not found');
     }
+
+    const isCustomerAuthorized = user
+      ? TenancyUtil.isAuthorizedForTenant(user, customer.tenantId, customer.tenant?.parentId)
+      : customer.tenantId === tenantId;
+
+    if (!isCustomerAuthorized) {
+      throw new ForbiddenException('Customer record does not belong to your organization');
+    }
+
+    const effectiveTenantId = customer.tenantId || tenantId;
 
     // 2. Verify technician if assigned
     if (createJobDto.assignedTechnicianId) {
       const tech = await this.prisma.user.findUnique({
         where: { id: createJobDto.assignedTechnicianId },
+        include: { tenant: true },
       });
 
-      if (!tech || tech.tenantId !== tenantId) {
+      if (!tech) {
+        throw new NotFoundException('Assigned technician not found');
+      }
+
+      const isTechAuthorized = user
+        ? TenancyUtil.isAuthorizedForTenant(user, tech.tenantId || '', tech.tenant?.parentId)
+        : tech.tenantId === tenantId;
+
+      if (!isTechAuthorized) {
         throw new ForbiddenException('Invalid technician assigned');
       }
 
       // Stage 22: Smart Scheduling Conflict Engine
-      if (createJobDto.scheduledAt) {
+      if (createJobDto.scheduledAt && !createJobDto.ignoreConflict) {
         await this.checkSchedulingConflicts(
-          tenantId,
+          effectiveTenantId,
           createJobDto.assignedTechnicianId,
           new Date(createJobDto.scheduledAt),
           createJobDto.estimatedDuration || 60,
@@ -49,7 +70,7 @@ export class JobService {
     // 3. Create job
     return this.prisma.job.create({
       data: {
-        tenantId,
+        tenantId: effectiveTenantId,
         title: createJobDto.title,
         description: createJobDto.description,
         customerRecordId: createJobDto.customerRecordId,
