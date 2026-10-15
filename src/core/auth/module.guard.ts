@@ -109,10 +109,36 @@ export class ModuleGuard implements CanActivate {
     }
 
     if (!activeSubscription) {
-      throw new ModuleRestrictedException(
-        requiredModules[0],
-        `No active subscription found for this organization. Please select a plan to activate ${requiredModules[0]}.`,
-      );
+      // Auto-assign default subscription tier if not yet explicitly provisioned by SuperAdmin
+      // HQ/Parent tenants default to Enterprise; child branches/solo default to Growth
+      const defaultSlug = !tenant.parentId ? 'enterprise' : 'growth';
+      const defaultPlan = await this.prisma.subscriptionPlan.findUnique({
+        where: { slug: defaultSlug },
+      });
+
+      if (defaultPlan) {
+        const periodEnd = new Date();
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+
+        activeSubscription = await this.prisma.tenantSubscription.create({
+          data: {
+            tenantId: tenant.id,
+            planId: defaultPlan.id,
+            status: 'ACTIVE',
+            billingCycle: 'ANNUAL',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: periodEnd,
+          },
+          include: {
+            plan: true,
+          },
+        });
+      } else {
+        throw new ModuleRestrictedException(
+          requiredModules[0],
+          `No active subscription found for this organization. Please select a plan to activate ${requiredModules[0]}.`,
+        );
+      }
     }
 
     if (activeSubscription.status === 'SUSPENDED') {

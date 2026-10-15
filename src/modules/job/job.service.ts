@@ -61,6 +61,62 @@ export class JobService {
     });
   }
 
+  async updateJob(tenantId: string, jobId: string, updateDto: any, user: any) {
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!job || job.tenantId !== tenantId) {
+      throw new NotFoundException('Job not found');
+    }
+
+    const techId = updateDto.assignedTechnicianId !== undefined ? updateDto.assignedTechnicianId : job.assignedTechnicianId;
+    const scheduledAt = updateDto.scheduledAt !== undefined ? (updateDto.scheduledAt ? new Date(updateDto.scheduledAt) : null) : job.scheduledAt;
+    const duration = updateDto.estimatedDuration !== undefined ? updateDto.estimatedDuration : job.estimatedDuration;
+
+    if (techId && scheduledAt && !updateDto.ignoreConflict) {
+      const proposedEnd = new Date(scheduledAt.getTime() + (duration || 60) * 60000);
+      const conflictingJobs = await this.prisma.job.findMany({
+        where: {
+          tenantId,
+          assignedTechnicianId: techId,
+          id: { not: jobId },
+          status: { in: ['SCHEDULED', 'EN_ROUTE', 'IN_PROGRESS'] },
+          scheduledAt: { not: null },
+        },
+      });
+
+      for (const c of conflictingJobs) {
+        const existingStart = c.scheduledAt!;
+        const existingEnd = new Date(existingStart.getTime() + (c.estimatedDuration || 60) * 60000);
+        if (scheduledAt < existingEnd && proposedEnd > existingStart) {
+          throw new ConflictException({
+            message: `Technician already has an active overlapping job ("${c.title}") scheduled at ${existingStart.toISOString()}`,
+            conflictingJob: c,
+          });
+        }
+      }
+    }
+
+    const updateData: any = {};
+    if (updateDto.title !== undefined) updateData.title = updateDto.title;
+    if (updateDto.description !== undefined) updateData.description = updateDto.description;
+    if (updateDto.customerRecordId !== undefined) updateData.customerRecordId = updateDto.customerRecordId;
+    if (updateDto.assignedTechnicianId !== undefined) updateData.assignedTechnicianId = updateDto.assignedTechnicianId;
+    if (updateDto.scheduledAt !== undefined) updateData.scheduledAt = updateDto.scheduledAt ? new Date(updateDto.scheduledAt) : null;
+    if (updateDto.estimatedDuration !== undefined) updateData.estimatedDuration = updateDto.estimatedDuration;
+    if (updateDto.status !== undefined) updateData.status = updateDto.status;
+
+    return this.prisma.job.update({
+      where: { id: jobId },
+      data: updateData,
+      include: {
+        customerRecord: { select: { name: true, address: true } },
+        assignedTechnician: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+  }
+
   async getJobs(tenantId: string, user: any) {
     const whereClause: any = { tenantId };
 

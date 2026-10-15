@@ -29,6 +29,17 @@ export class JobController {
     return this.jobService.getJobs(user.tenantId, user);
   }
 
+  @Patch(':id')
+  @Permissions('admin_access')
+  async update(
+    @CurrentUser() user: any,
+    @Param('id') jobId: string,
+    @Body() updateDto: any,
+  ) {
+    if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
+    return this.jobService.updateJob(user.tenantId, jobId, updateDto, user);
+  }
+
   @Patch(':id/status')
   async updateStatus(
     @CurrentUser() user: any,

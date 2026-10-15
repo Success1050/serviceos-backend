@@ -122,6 +122,27 @@ export class TenantService {
         });
       }
 
+      // Auto-assign default subscription tier: Enterprise for HQ, Growth for standalone
+      const targetSlug = isHq ? 'enterprise' : 'growth';
+      const defaultPlan = await tx.subscriptionPlan.findUnique({
+        where: { slug: targetSlug },
+      });
+
+      if (defaultPlan) {
+        const periodEnd = new Date();
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+        await tx.tenantSubscription.create({
+          data: {
+            tenantId: tenant.id,
+            planId: defaultPlan.id,
+            status: 'ACTIVE',
+            billingCycle: 'ANNUAL',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: periodEnd,
+          },
+        });
+      }
+
       return tenant;
     });
 

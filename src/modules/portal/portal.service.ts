@@ -9,6 +9,8 @@ import { LiveTrackingResponseDto } from './dto/live-tracking.dto';
 import { SupportTicketService } from '../support-ticket/support-ticket.service';
 import { CreateCustomerTicketDto } from '../support-ticket/dto/create-customer-ticket.dto';
 import { CreateTicketMessageDto } from '../support-ticket/dto/create-ticket-message.dto';
+import { PaymentGatewayType, PaymentTransactionStatus } from '@prisma/client';
+import { PayInvoiceDto } from '../invoice/dto/pay-invoice.dto';
 
 @Injectable()
 export class PortalService {
@@ -730,6 +732,136 @@ export class PortalService {
     }
 
     return invoice;
+  }
+
+  // --- STAGE 25: CUSTOMER INVOICE SELF-PAY (PRIMARY ONLINE CHECKOUT) ---
+
+  async payInvoiceForCustomer(slug: string, invoiceId: string, payDto: PayInvoiceDto) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        customerRecord: true,
+        tenant: true,
+      },
+    });
+
+    if (!invoice || invoice.tenantId !== tenant.id || invoice.status === 'DRAFT') {
+      throw new NotFoundException('Invoice not found or inaccessible');
+    }
+
+    if (invoice.status === 'PAID') {
+      throw new BadRequestException('This invoice is already paid in full');
+    }
+
+    const gateway = payDto.gateway === 'STRIPE' ? PaymentGatewayType.STRIPE : PaymentGatewayType.PAYSTACK;
+    const currency = payDto.currency || (gateway === PaymentGatewayType.STRIPE ? 'USD' : 'NGN');
+    const reference = `PORTAL-${gateway}-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    await this.prisma.paymentTransaction.create({
+      data: {
+        tenantId: invoice.tenantId,
+        customerRecordId: invoice.customerRecordId,
+        invoiceId: invoice.id,
+        gateway,
+        transactionReference: reference,
+        amount: invoice.amount,
+        currency,
+        type: 'DIRECT_CHARGE',
+        paymentMethod: 'CARD',
+        status: PaymentTransactionStatus.PENDING,
+        metadata: {
+          customerEmail: invoice.customerRecord.email,
+          customerName: invoice.customerRecord.name,
+          invoiceTitle: invoice.title,
+          source: 'CUSTOMER_PORTAL_SELF_PAY',
+        },
+      },
+    });
+
+    return {
+      message: 'Payment gateway initialized for customer self-service checkout',
+      gateway,
+      reference,
+      amount: Number(invoice.amount),
+      currency,
+      customerEmail: invoice.customerRecord.email,
+      customerName: invoice.customerRecord.name,
+      publicKey:
+        gateway === PaymentGatewayType.PAYSTACK
+          ? process.env.PAYSTACK_PUBLIC_KEY || 'pk_test_demo_paystack_serviceos_2026'
+          : process.env.STRIPE_PUBLIC_KEY || 'pk_test_demo_stripe_serviceos_2026',
+    };
+  }
+
+  async confirmInvoicePaymentForCustomer(slug: string, invoiceId: string, reference?: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        customerRecord: true,
+        paymentTransactions: true,
+      },
+    });
+
+    if (!invoice || invoice.tenantId !== tenant.id) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    if (invoice.status === 'PAID') {
+      return invoice;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      if (reference) {
+        await tx.paymentTransaction.updateMany({
+          where: {
+            invoiceId: invoice.id,
+            transactionReference: reference,
+          },
+          data: {
+            status: PaymentTransactionStatus.SUCCESSFUL,
+          },
+        });
+      }
+
+      const updatedInvoice = await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          status: 'PAID',
+          paidAt: new Date(),
+        },
+        include: {
+          customerRecord: true,
+          paymentTransactions: true,
+        },
+      });
+
+      // Dispatch real-time notification to tenant staff queue
+      await this.notificationService.sendToTenant(
+        tenant.id,
+        '💳 Payment Received Online!',
+        `${invoice.customerRecord.name} paid invoice #${invoice.id.slice(0, 8).toUpperCase()} online!`,
+        'SUCCESS',
+        `/dashboard/invoices`,
+      );
+
+      return updatedInvoice;
+    });
   }
 
   // ==========================================

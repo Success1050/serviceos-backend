@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
@@ -102,5 +102,35 @@ export class SettingsService {
     );
 
     return updated;
+  }
+
+  async getSubscription(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: {
+        subscription: {
+          include: { plan: true },
+        },
+        parent: {
+          include: {
+            subscription: {
+              include: { plan: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tenant) throw new NotFoundException('Tenant not found');
+
+    const isSubCompany = Boolean(tenant.parentId);
+    const effectiveSubscription = tenant.subscription || tenant.parent?.subscription || null;
+
+    return {
+      isSubCompany,
+      parentTenantName: tenant.parent?.name || null,
+      parentTenantSlug: tenant.parent?.slug || null,
+      subscription: effectiveSubscription,
+    };
   }
 }

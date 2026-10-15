@@ -9,6 +9,7 @@ import { CreateServiceRequestDto } from '../service-request/dto/create-service-r
 import { AcceptQuoteDto } from './dto/accept-quote.dto';
 import { CreateCustomerTicketDto } from '../support-ticket/dto/create-customer-ticket.dto';
 import { CreateTicketMessageDto } from '../support-ticket/dto/create-ticket-message.dto';
+import { PayInvoiceDto } from '../invoice/dto/pay-invoice.dto';
 
 @Controller('portal/:slug')
 export class PortalController {
@@ -64,6 +65,26 @@ export class PortalController {
     @Param('invoiceId') invoiceId: string,
   ) {
     return this.portalService.getInvoiceForCustomer(slug, invoiceId);
+  }
+
+  @Public()
+  @Post('invoices/:invoiceId/pay')
+  async payInvoice(
+    @Param('slug') slug: string,
+    @Param('invoiceId') invoiceId: string,
+    @Body() payDto: PayInvoiceDto,
+  ) {
+    return this.portalService.payInvoiceForCustomer(slug, invoiceId, payDto);
+  }
+
+  @Public()
+  @Post('invoices/:invoiceId/confirm')
+  async confirmPayment(
+    @Param('slug') slug: string,
+    @Param('invoiceId') invoiceId: string,
+    @Body('reference') reference?: string,
+  ) {
+    return this.portalService.confirmInvoicePaymentForCustomer(slug, invoiceId, reference);
   }
 
   // ==========================================
