@@ -126,7 +126,9 @@ export class JobService {
     if (updateDto.assignedTechnicianId !== undefined) updateData.assignedTechnicianId = updateDto.assignedTechnicianId;
     if (updateDto.scheduledAt !== undefined) updateData.scheduledAt = updateDto.scheduledAt ? new Date(updateDto.scheduledAt) : null;
     if (updateDto.estimatedDuration !== undefined) updateData.estimatedDuration = updateDto.estimatedDuration;
-    if (updateDto.status !== undefined) updateData.status = updateDto.status;
+    if (updateDto.status !== undefined) {
+      updateData.status = updateDto.status === 'PENDING' ? 'SCHEDULED' : updateDto.status;
+    }
 
     return this.prisma.job.update({
       where: { id: jobId },
