@@ -221,4 +221,51 @@ export class WarehouseService {
       return approvedRequest;
     });
   }
+
+  async getTruckInventoryByUserId(tenantId: string, userId: string) {
+    const truck = await this.prisma.warehouse.findFirst({
+      where: {
+        assignedTechnicianId: userId,
+        type: 'VIRTUAL_TRUCK',
+        OR: [
+          { tenantId },
+          { tenant: { parentId: tenantId } },
+        ],
+      },
+      include: {
+        inventoryItems: {
+          include: { product: true },
+        },
+        assignedTechnician: {
+          select: { id: true, firstName: true, lastName: true, tradeSpecialty: true },
+        },
+      },
+    });
+
+    if (!truck) {
+      const tech = await this.prisma.user.findFirst({
+        where: { id: userId, isFieldTech: true },
+      });
+      if (!tech) throw new NotFoundException('Technician not found');
+
+      return this.prisma.warehouse.create({
+        data: {
+          tenantId,
+          name: `Truck - ${tech.firstName} ${tech.lastName}`,
+          type: 'VIRTUAL_TRUCK',
+          assignedTechnicianId: userId,
+        },
+        include: {
+          inventoryItems: {
+            include: { product: true },
+          },
+          assignedTechnician: {
+            select: { id: true, firstName: true, lastName: true, tradeSpecialty: true },
+          },
+        },
+      });
+    }
+
+    return truck;
+  }
 }

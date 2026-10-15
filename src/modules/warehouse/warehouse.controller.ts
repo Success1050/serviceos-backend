@@ -76,4 +76,10 @@ export class WarehouseController {
   ) {
     return this.warehouseService.approveEquipmentRequest(user.tenantId, requestId, approveRequestDto.virtualTruckId);
   }
+
+  @Get('trucks/:userId')
+  @Permissions('warehouse_view', 'warehouse_create')
+  async getTruckInventoryByUserId(@Param('userId') userId: string, @CurrentUser() user: any) {
+    return this.warehouseService.getTruckInventoryByUserId(user.tenantId, userId);
+  }
 }
