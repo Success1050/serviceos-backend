@@ -29,6 +29,12 @@ export class JobController {
     return this.jobService.getJobs(user.tenantId, user);
   }
 
+  @Get('technicians')
+  async getTechnicians(@CurrentUser() user: any) {
+    if (!user.tenantId) throw new BadRequestException('User does not belong to a tenant');
+    return this.jobService.getDispatchTechnicians(user.tenantId);
+  }
+
   @Patch(':id')
   @Permissions('admin_access')
   async update(

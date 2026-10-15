@@ -306,4 +306,23 @@ export class JobService {
       }
     }
   }
+
+  async getDispatchTechnicians(tenantId: string) {
+    return this.prisma.user.findMany({
+      where: {
+        tenantId,
+        isFieldTech: true,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        tradeSpecialty: true,
+        isFieldTech: true,
+        status: true,
+      },
+      orderBy: { firstName: 'asc' },
+    });
+  }
 }
