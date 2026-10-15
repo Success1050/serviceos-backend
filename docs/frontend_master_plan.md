@@ -286,7 +286,12 @@ gantt
   * Drag-and-drop job rescheduling with real-time conflict detection:
     * If a technician already has an active job in the time slot, prompt a conflict warning modal with override permissions check.
   * Unassigned Jobs Queue drawer allowing 1-click dispatch to the closest available technician.
-* **Verification:** Attempt to double-book a technician at 10:00 AM, confirm conflict error modal blocks dispatch.
+  * **Dual-Channel Dispatch Alerts & Feature-Phone ("Button Phone") SMS Pipeline:**
+    * Automated dispatch trigger: When a technician is assigned to a job or rescheduled, automatically fire structured SMS and Email notifications.
+    * Feature-Phone ("Button Phone") SMS Format: Plain text brief (zero mobile data / smartphone requirement) containing Job Title, Customer Name, Site Address, Scheduled Time/Duration, and Client Phone shortcut.
+    * Reschedule & Cancellation Alerts: Instant SMS update if appointment timing changes or if a job is reassigned, preventing unnecessary transit.
+    * Manual "Resend SMS Dispatch" button in the Job Dossier modal (`JobDetailModal`) for instant on-demand re-triggering by backoffice dispatchers.
+* **Verification:** Attempt to double-book a technician at 10:00 AM, confirm conflict error modal blocks dispatch. Confirm dispatch SMS trigger logs work order brief with customer address and phone.
 
 #### **Day 10: Supply Chain, Virtual Warehouses & Truck Inventories**
 * **Goal:** HQ master catalog, branch equipment requests, and technician virtual truck inventory.
@@ -444,7 +449,10 @@ gantt
     * `[Tap Arrived / Check-In]`: Validates geofence coordinates against customer property.
     * `[Start Job]`: Generates customer 4-digit security PIN and displays pre-job checklist.
   * Parts usage recorder: Deduct solar connectors, breaker boxes, and cables from virtual truck inventory.
-* **Verification:** Tap "En Route" -> "Arrived"; verify dispatch board and customer tracking screen reflect status changes in real-time.
+  * **Dual-Tier Technician Hardware Support (Smartphone vs. Button Phone):**
+    * **Smartphone Users (PWA):** Access `/tech/jobs` with rich interactive map view, dynamic GPS polling, parts checklist, and digital completion OTP pad.
+    * **Button / Feature Phone Users (Offline SMS Fallback):** Field electricians without Android/iOS devices receive job dispatches, site directions, and customer contact directly via SMS. Completion OTP is verbally collected from customer or verified by customer directly on their portal (`/s/:slug/dashboard`).
+* **Verification:** Tap "En Route" -> "Arrived"; verify dispatch board and customer tracking screen reflect status changes in real-time. Confirm SMS brief delivery to non-smartphone technician test number.
 
 #### **Day 21: Cryptographic OTP Job Completion & Customer Sign-Off**
 * **Goal:** Uber-style completion OTP and digital sign-off to eliminate job completion disputes.

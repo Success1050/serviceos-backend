@@ -64,6 +64,11 @@ This document outlines the upcoming stages for the ServiceOS Enterprise Tier, fo
 - **HQ Proxy Verification Engine:** Corporate HQ God-View dashboard across all franchisee branches to audit manager endorsements and physical ID evidence. HQ approves or rejects hires with feedback, maintaining corporate brand governance and dispatch security.
 - **Passwordless 4-Digit SMS PIN Login:** Field technicians authenticate into their mobile web app / PWA using a fast, 4-digit numeric PIN sent via SMS (rate-limited, cryptographic generation, replay protection, and zero passwords to remember or reset).
 - **The "Big Button" Legal Compensation Acknowledgment:** Upon first mobile login, technicians review a clear commission disclosure and tap a massive "I AGREE" button, generating an immutable `AuditLog` entry (timestamp, IP address, user-agent, rate snapshot) providing undeniable legal payroll protection against labor disputes.
+- **Offline & Feature-Phone ("Button Phone") Dispatch Pipeline:** Recognizing that many blue-collar field technicians in emerging markets operate basic feature phones (Nokia/itel/Tecno torchlight phones) without smartphones, mobile data, or web browsers:
+  - When jobs are scheduled, assigned, or rescheduled, the system automatically triggers structured 160-character plain text SMS briefs directly to the technician's mobile number (`+234...`).
+  - Contains all critical field parameters: Job Title, Client Name, Premise Address, Time Slot, and Customer Phone contact.
+  - Accompanied by optional email notifications for technicians with email-enabled devices.
+  - Provides dispatchers with a manual "Resend SMS Work Order" button in the Job Dossier to re-dispatch anytime.
 
 ## Stage 28: Fintech Wallets & Multi-Tenant Payroll (Completed - Backend)
 - **The 3-Tier Wallet System:** 
