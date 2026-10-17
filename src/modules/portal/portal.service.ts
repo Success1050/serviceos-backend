@@ -66,8 +66,8 @@ export class PortalService {
       tenantId,
       alertTitle,
       alertMessage,
-      isEmergency ? 'WARNING' : 'INFO',
-      `/dashboard/service-requests`,
+      isEmergency ? 'EMERGENCY_SERVICE_REQUEST' : 'SERVICE_REQUEST',
+      `/app/customers`,
     );
 
     return created;
@@ -99,6 +99,46 @@ export class PortalService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async remindServiceRequest(tenantId: string, relationshipId: string, requestId: string) {
+    const relationship = await this.validateCustomerRelationship(tenantId, relationshipId);
+
+    const request = await this.prisma.serviceRequest.findFirst({
+      where: {
+        id: requestId,
+        tenantId,
+        customerRecordId: relationship.customerRecordId,
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Service request not found or not associated with your customer record');
+    }
+
+    const customerName = relationship.customerRecord.name || 'Customer';
+    const alertTitle = `⏰ Customer Follow-Up Reminder`;
+    const alertMessage = `${customerName} sent a reminder regarding their service request: "${request.description}". Please review and schedule promptly.`;
+
+    await this.notificationService.sendToTenant(
+      tenantId,
+      alertTitle,
+      alertMessage,
+      'SERVICE_REQUEST',
+      '/app/customers',
+    );
+
+    await this.prisma.serviceRequest.update({
+      where: { id: requestId },
+      data: { updatedAt: new Date() },
+    });
+
+    return {
+      success: true,
+      message: 'Reminder sent to contractor dispatch team',
+      requestId: request.id,
+      remindedAt: new Date().toISOString(),
+    };
   }
 
   // --- LIVE TECHNICIAN TRACKING ENGINE ---
@@ -469,8 +509,12 @@ export class PortalService {
       }),
       this.prisma.serviceRequest.findMany({
         where: { tenantId, customerRecordId: relationship.customerRecordId },
+        include: {
+          asset: { select: { id: true, name: true, serialNumber: true } },
+          job: { select: { id: true, title: true, status: true, scheduledAt: true } },
+        },
         orderBy: { createdAt: 'desc' },
-        take: 5,
+        take: 10,
       }),
       this.prisma.supportTicket.findMany({
         where: { tenantId, customerRecordId: relationship.customerRecordId },

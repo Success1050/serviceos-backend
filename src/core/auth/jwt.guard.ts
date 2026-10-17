@@ -38,6 +38,7 @@ export class JwtGuard implements CanActivate {
       request.user = {
         id: payload.sub,
         sub: payload.sub,
+        userId: payload.sub,
         email: payload.email,
         tenantId: payload.tenantId,
         parentId: payload.parentId as string | null,

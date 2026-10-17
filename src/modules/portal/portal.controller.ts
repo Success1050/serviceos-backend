@@ -193,6 +193,19 @@ export class PortalController {
     return this.portalService.getCustomerServiceRequests(user.tenantId, user.relationshipId);
   }
 
+  @Post('service-requests/:id/remind')
+  @Permissions('customer_portal', 'admin_access')
+  async remindServiceRequest(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.tenantId || !user.relationshipId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    return this.portalService.remindServiceRequest(user.tenantId, user.relationshipId, id);
+  }
+
   // --- SELF-SERVE INVOICES HISTORY ---
 
   @Get('history/invoices')
