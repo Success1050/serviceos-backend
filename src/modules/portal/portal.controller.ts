@@ -37,6 +37,54 @@ export class PortalController {
     return this.portalService.verifyOtp(slug, verifyOtpDto.phone, verifyOtpDto.code);
   }
 
+  @Get('auth/companies')
+  @Permissions('customer_portal', 'admin_access')
+  async getCompanies(
+    @Param('slug') slug: string,
+    @CurrentUser() user: any,
+  ) {
+    const identityId = user?.id || user?.sub;
+    if (!identityId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    return this.portalService.getCustomerCompanies(slug, identityId);
+  }
+
+  @Post('auth/switch-tenant')
+  @Permissions('customer_portal', 'admin_access')
+  async switchTenant(
+    @Param('slug') slug: string,
+    @Body('targetSlug') targetSlug: string,
+    @CurrentUser() user: any,
+  ) {
+    const identityId = user?.id || user?.sub;
+    if (!identityId) {
+      throw new BadRequestException('Invalid customer context');
+    }
+    if (!targetSlug) {
+      throw new BadRequestException('Target tenant slug is required');
+    }
+    return this.portalService.switchTenant(slug, targetSlug, identityId);
+  }
+
+  @Public()
+  @Get('invitations/:token')
+  async getInvitation(
+    @Param('slug') slug: string,
+    @Param('token') token: string,
+  ) {
+    return this.portalService.getInvitationByToken(slug, token);
+  }
+
+  @Public()
+  @Post('invitations/:token/claim')
+  async claimInvitation(
+    @Param('slug') slug: string,
+    @Param('token') token: string,
+  ) {
+    return this.portalService.claimInvitation(slug, token);
+  }
+
   @Public()
   @Get('quotes/:quoteId')
   async getQuote(

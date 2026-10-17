@@ -37,6 +37,7 @@ export class JwtGuard implements CanActivate {
       const { payload } = await jwtVerify(token, this.jwtSecret);
       request.user = {
         id: payload.sub,
+        sub: payload.sub,
         email: payload.email,
         tenantId: payload.tenantId,
         parentId: payload.parentId as string | null,
