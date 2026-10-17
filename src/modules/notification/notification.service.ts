@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { NotificationGateway } from './gateways/notification.gateway';
 
@@ -29,8 +29,12 @@ export class NotificationService {
 
   async getUnreadForUser(tenantId: string, userId: string) {
     return this.prisma.notification.findMany({
-      where: { tenantId, userId, isRead: false },
+      where: {
+        tenantId,
+        OR: [{ userId }, { userId: null }],
+      },
       orderBy: { createdAt: 'desc' },
+      take: 50,
     });
   }
 
@@ -38,13 +42,24 @@ export class NotificationService {
     return this.prisma.notification.findMany({
       where: { tenantId, userId: null },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      take: 30,
     });
   }
 
   async markAsRead(id: string) {
     return this.prisma.notification.update({
       where: { id },
+      data: { isRead: true },
+    });
+  }
+
+  async markAllAsRead(tenantId: string, userId: string) {
+    return this.prisma.notification.updateMany({
+      where: {
+        tenantId,
+        OR: [{ userId }, { userId: null }],
+        isRead: false,
+      },
       data: { isRead: true },
     });
   }
