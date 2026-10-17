@@ -184,7 +184,9 @@ export class CustomerService {
     ]);
 
     const customers = items.map((item) => {
-      const rel = item.relationships[0];
+      const activeRel = item.relationships.find((r) => r.status === 'ACTIVE');
+      const pendingRel = item.relationships.find((r) => r.status === 'INVITATION_PENDING');
+      const rel = activeRel || pendingRel || item.relationships[0];
       const portalStatus = rel?.status || 'NOT_ACTIVATED';
       return {
         ...item,
@@ -226,7 +228,9 @@ export class CustomerService {
       throw new NotFoundException('Customer record not found or inaccessible');
     }
 
-    const rel = customer.relationships[0];
+    const activeRel = customer.relationships.find((r) => r.status === 'ACTIVE');
+    const pendingRel = customer.relationships.find((r) => r.status === 'INVITATION_PENDING');
+    const rel = activeRel || pendingRel || customer.relationships[0];
     return {
       ...customer,
       portalStatus: rel?.status || 'NOT_ACTIVATED',

@@ -8,15 +8,16 @@ export class NotificationController {
 
   @Get('me')
   async getMyNotifications(@CurrentUser() user: any) {
-    if (!user.tenantId || !user.userId) {
+    const userId = user?.userId || user?.id || user?.sub;
+    if (!user?.tenantId || !userId) {
       throw new BadRequestException('Invalid user context');
     }
-    return this.notificationService.getUnreadForUser(user.tenantId, user.userId);
+    return this.notificationService.getUnreadForUser(user.tenantId, userId);
   }
 
   @Get('tenant')
   async getTenantNotifications(@CurrentUser() user: any) {
-    if (!user.tenantId) {
+    if (!user?.tenantId) {
       throw new BadRequestException('Invalid user context');
     }
     return this.notificationService.getRecentForTenant(user.tenantId);
@@ -24,10 +25,11 @@ export class NotificationController {
 
   @Patch('read-all')
   async markAllAsRead(@CurrentUser() user: any) {
-    if (!user.tenantId || !user.userId) {
+    const userId = user?.userId || user?.id || user?.sub;
+    if (!user?.tenantId || !userId) {
       throw new BadRequestException('Invalid user context');
     }
-    return this.notificationService.markAllAsRead(user.tenantId, user.userId);
+    return this.notificationService.markAllAsRead(user.tenantId, userId);
   }
 
   @Patch(':id/read')
