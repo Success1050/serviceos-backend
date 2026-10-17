@@ -698,6 +698,7 @@ export class PortalService {
         },
       });
     } else if (relationship.status !== 'ACTIVE' || !relationship.identityId) {
+      const wasInactive = relationship.status !== 'ACTIVE';
       relationship = await this.prisma.customerTenantRelationship.update({
         where: { id: relationship.id },
         data: {
@@ -705,6 +706,32 @@ export class PortalService {
           status: 'ACTIVE',
         },
       });
+
+      if (wasInactive) {
+        try {
+          this.notificationService.broadcastEvent(tenant.id, 'customer_updated', {
+            customerId: customerRecord.id,
+            relationshipId: relationship.id,
+            portalStatus: 'ACTIVE',
+            customerName: customerRecord.name,
+          });
+          this.notificationService.broadcastEvent(tenant.id, 'realtime_update', {
+            entity: 'customer',
+            type: 'customer.activated',
+            customerId: customerRecord.id,
+            portalStatus: 'ACTIVE',
+          });
+          await this.notificationService.sendToTenant(
+            tenant.id,
+            '🎉 Customer Portal Activated',
+            `${customerRecord.name} activated their customer care portal.`,
+            'CUSTOMER_ACTIVATED',
+            '/app/customers',
+          );
+        } catch (err) {
+          console.warn('Failed to broadcast customer activation notification:', err);
+        }
+      }
     }
 
     // Find all active companies linked to this identity
@@ -924,6 +951,43 @@ export class PortalService {
       where: { id: invitation.id },
       data: { status: 'ACCEPTED' },
     });
+
+    const tenantId = invitation.relationship.tenantId;
+    const customerName = customerRecord.name || 'Customer';
+
+    // Broadcast instant real-time events to the company backoffice so the CRM updates dynamically without page reload
+    try {
+      this.notificationService.broadcastEvent(tenantId, 'customer_updated', {
+        customerId: customerRecord.id,
+        relationshipId: updatedRelationship.id,
+        portalStatus: 'ACTIVE',
+        customerName,
+      });
+
+      this.notificationService.broadcastEvent(tenantId, 'invitation_claimed', {
+        customerId: customerRecord.id,
+        relationshipId: updatedRelationship.id,
+        portalStatus: 'ACTIVE',
+        customerName,
+      });
+
+      this.notificationService.broadcastEvent(tenantId, 'realtime_update', {
+        entity: 'customer',
+        type: 'customer.activated',
+        customerId: customerRecord.id,
+        portalStatus: 'ACTIVE',
+      });
+
+      await this.notificationService.sendToTenant(
+        tenantId,
+        '🎉 Customer Portal Activated',
+        `${customerName} accepted their invitation and is now active on the customer care portal.`,
+        'CUSTOMER_ACTIVATED',
+        '/app/customers',
+      );
+    } catch (err) {
+      console.warn('Failed to broadcast customer activation notification:', err);
+    }
 
     // Generate JWT
     const alg = 'HS256';
