@@ -753,6 +753,13 @@ model ExpenseReceipt {
 
   amount          Decimal
   receiptPhotoUrl String
+  category        String?
+  vendor          String?
+  notes           String?
+  rejectionReason String?
+  billToClient    Boolean       @default(false)
+  reviewedAt      DateTime?
+  reviewedById    String?
 
   status ExpenseStatus @default(PENDING_APPROVAL)
 

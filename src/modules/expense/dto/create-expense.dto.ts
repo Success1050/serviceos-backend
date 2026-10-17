@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsUrl, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, IsBoolean } from 'class-validator';
 
 export class CreateExpenseDto {
   @IsNotEmpty()
@@ -10,6 +10,26 @@ export class CreateExpenseDto {
   amount: number;
 
   @IsNotEmpty()
-  @IsUrl()
+  @IsString()
   receiptPhotoUrl: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  vendor?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsUUID()
+  technicianId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  billToClient?: boolean;
 }
