@@ -1,4 +1,4 @@
-﻿import { IsNotEmpty, IsInt, IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsInt, IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class CreateMaintenanceScheduleDto {
   @IsString()
@@ -16,4 +16,13 @@ export class CreateMaintenanceScheduleDto {
   @IsString()
   @IsOptional()
   assetId?: string;
+
+  @IsString()
+  @IsOptional()
+  customerRecordId?: string;
+
+  @IsString()
+  @IsOptional()
+  customerId?: string;
 }
+

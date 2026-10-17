@@ -1,4 +1,4 @@
-﻿import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { CreateMaintenanceScheduleDto } from './dto/create-schedule.dto';
 
@@ -6,25 +6,105 @@ import { CreateMaintenanceScheduleDto } from './dto/create-schedule.dto';
 export class MaintenanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createSchedule(tenantId: string, customerRecordId: string, dto: CreateMaintenanceScheduleDto) {
+  async getAllSchedules(tenantId: string) {
+    return this.prisma.maintenanceSchedule.findMany({
+      where: { tenantId },
+      include: {
+        customerRecord: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            address: true,
+            city: true,
+          },
+        },
+        asset: {
+          select: {
+            id: true,
+            name: true,
+            manufacturer: true,
+            modelNumber: true,
+            serialNumber: true,
+          },
+        },
+      },
+      orderBy: { nextDueDate: 'asc' },
+    });
+  }
+
+  async createSchedule(tenantId: string, customerRecordId: string | undefined, dto: CreateMaintenanceScheduleDto) {
+    const finalCustomerId = customerRecordId || dto.customerRecordId || dto.customerId;
+    if (!finalCustomerId) {
+      throw new BadRequestException('A valid customer is required for the maintenance schedule');
+    }
+
+    const customer = await this.prisma.customerRecord.findUnique({
+      where: { id: finalCustomerId },
+    });
+    if (!customer || customer.tenantId !== tenantId) {
+      throw new BadRequestException('Customer record not found');
+    }
+
     if (dto.assetId) {
       const asset = await this.prisma.asset.findUnique({
         where: { id: dto.assetId },
       });
-      if (!asset || asset.tenantId !== tenantId || asset.customerRecordId !== customerRecordId) {
-        throw new BadRequestException('Invalid asset specified');
+      if (!asset || asset.tenantId !== tenantId || asset.customerRecordId !== finalCustomerId) {
+        throw new BadRequestException('Invalid asset specified for this customer');
       }
     }
 
     return this.prisma.maintenanceSchedule.create({
       data: {
         tenantId,
-        customerRecordId,
-        assetId: dto.assetId,
+        customerRecordId: finalCustomerId,
+        assetId: dto.assetId || null,
         title: dto.title,
         intervalMonths: dto.intervalMonths,
         nextDueDate: new Date(dto.firstDueDate),
         status: 'ACTIVE',
+      },
+      include: {
+        customerRecord: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            address: true,
+            city: true,
+          },
+        },
+        asset: {
+          select: {
+            id: true,
+            name: true,
+            manufacturer: true,
+            modelNumber: true,
+            serialNumber: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateScheduleStatus(tenantId: string, scheduleId: string, status: any) {
+    const schedule = await this.prisma.maintenanceSchedule.findUnique({
+      where: { id: scheduleId },
+    });
+
+    if (!schedule || schedule.tenantId !== tenantId) {
+      throw new BadRequestException('Schedule not found');
+    }
+
+    return this.prisma.maintenanceSchedule.update({
+      where: { id: scheduleId },
+      data: { status },
+      include: {
+        customerRecord: { select: { id: true, name: true, phone: true } },
+        asset: { select: { id: true, name: true } },
       },
     });
   }
@@ -40,8 +120,25 @@ export class MaintenanceService {
         nextDueDate: { lte: targetDate },
       },
       include: {
-        customerRecord: { select: { name: true, phone: true, address: true } },
-        asset: { select: { name: true } },
+        customerRecord: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            address: true,
+            city: true,
+          },
+        },
+        asset: {
+          select: {
+            id: true,
+            name: true,
+            manufacturer: true,
+            modelNumber: true,
+            serialNumber: true,
+          },
+        },
       },
       orderBy: { nextDueDate: 'asc' },
     });
