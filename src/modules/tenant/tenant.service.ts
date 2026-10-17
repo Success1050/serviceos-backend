@@ -272,11 +272,34 @@ export class TenantService {
       where: { slug },
       include: {
         settings: true,
+        parent: {
+          include: { settings: true },
+        },
       },
     });
 
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
+    }
+
+    // Cascade HQ locked settings to sub-company if applicable
+    if (tenant.parent?.settings && tenant.settings) {
+      const parentSettings = tenant.parent.settings;
+      const lockedFields = Array.isArray(parentSettings.lockedSettings)
+        ? (parentSettings.lockedSettings as any as string[])
+        : [];
+
+      lockedFields.forEach((field: string) => {
+        if ((parentSettings as any)[field] !== undefined) {
+          (tenant.settings as any)[field] = (parentSettings as any)[field];
+        }
+      });
+
+      // If child branch has no custom branding, inherit parent HQ branding
+      const childBranding = tenant.settings.branding as Record<string, any> | null;
+      if (parentSettings.branding && (!childBranding || !childBranding.primaryColor)) {
+        tenant.settings.branding = parentSettings.branding;
+      }
     }
 
     return tenant;
