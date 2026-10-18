@@ -225,6 +225,7 @@ export class AuthService {
       message: '4-digit PIN sent via SMS successfully',
       phone: cleanedPhone,
       expiresInSeconds: 600,
+      debugPin: process.env.NODE_ENV !== 'production' ? pin : undefined,
     };
   }
 
