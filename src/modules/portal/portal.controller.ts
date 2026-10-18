@@ -95,7 +95,7 @@ export class PortalController {
   }
 
   @Public()
-  @Patch('quotes/:quoteId/accept')
+  @Post('quotes/:quoteId/accept')
   async acceptQuote(
     @Param('slug') slug: string,
     @Param('quoteId') quoteId: string,

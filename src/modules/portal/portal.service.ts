@@ -1054,17 +1054,43 @@ export class PortalService {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: {
-        tenant: { select: { name: true } },
-        customerRecord: { select: { name: true, email: true, address: true } },
+        tenant: { select: { id: true, name: true, slug: true } },
+        customerRecord: { select: { id: true, name: true, email: true, phone: true, address: true, city: true } },
         milestones: { orderBy: { order: 'asc' } },
       },
     });
 
     if (!quote || quote.tenantId !== tenant.id || quote.status === 'DRAFT') {
-      throw new NotFoundException('Quote not found');
+      throw new NotFoundException('Quote not found or not published');
     }
 
-    return quote;
+    // Unpack line items and pricing metadata if embedded in terms
+    const rawTerms = quote.termsAndConditions;
+    let cleanTerms = rawTerms;
+    let meta: any = null;
+    if (rawTerms && rawTerms.includes('<!--serviceos-quote-meta:')) {
+      const start = rawTerms.indexOf('<!--serviceos-quote-meta:');
+      const end = rawTerms.indexOf('-->', start);
+      if (end !== -1) {
+        cleanTerms = rawTerms.slice(0, start).trim();
+        try {
+          meta = JSON.parse(rawTerms.slice(start + '<!--serviceos-quote-meta:'.length, end));
+        } catch {
+          // Ignore json parse error
+        }
+      }
+    }
+
+    return {
+      ...quote,
+      termsAndConditions: cleanTerms || null,
+      items: meta?.items || undefined,
+      subtotal: meta?.subtotal || undefined,
+      discountAmount: meta?.discountAmount || undefined,
+      taxAmount: meta?.taxAmount || undefined,
+      validUntil: meta?.validUntil || undefined,
+      notes: meta?.notes || undefined,
+    };
   }
 
   async acceptQuote(slug: string, quoteId: string, acceptDto?: any, clientIp?: string) {
@@ -1097,8 +1123,10 @@ export class PortalService {
       include: {
         milestones: { orderBy: { order: 'asc' } },
         customerRecord: true,
+        tenant: true,
       },
     });
+
 
     // If quote is MILESTONE billing, automatically invoice Milestone 1 (deposit)
     if (updatedQuote.billingType === 'MILESTONE' && updatedQuote.milestones?.length > 0) {
