@@ -1,4 +1,4 @@
-﻿import { WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { decodeJwt } from 'jose';
 
@@ -29,8 +29,10 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       
       const payload = decodeJwt(token);
       
-      const tenantId = payload.tenantId;
-      const userId = payload.sub; 
+      const tenantId = payload.tenantId as string;
+      const userId = payload.sub as string; 
+      const customerRecordId = payload.customerRecordId as string | undefined;
+      const relationshipId = payload.relationshipId as string | undefined;
 
       if (!tenantId || !userId) {
         client.disconnect();
@@ -42,9 +44,17 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       // Join user-specific room
       client.join(`tenant_${tenantId}_user_${userId}`);
 
-      console.log(`[WebSocket] Client connected: Tenant ${tenantId}, User ${userId}`);
-    } catch (e) {
-      console.log(`[WebSocket] Auth failed:`, e.message);
+      // If customer identity, join customer record and relationship scoped rooms
+      if (customerRecordId) {
+        client.join(`tenant_${tenantId}_customer_${customerRecordId}`);
+      }
+      if (relationshipId) {
+        client.join(`tenant_${tenantId}_rel_${relationshipId}`);
+      }
+
+      console.log(`[WebSocket] Client connected: Tenant ${tenantId}, User ${userId}${customerRecordId ? `, CustomerRecord: ${customerRecordId}` : ''}`);
+    } catch (e: any) {
+      console.log(`[WebSocket] Auth failed:`, e?.message || e);
       client.disconnect();
     }
   }
@@ -59,5 +69,9 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
 
   sendToUser(tenantId: string, userId: string, event: string, payload: any) {
     this.server.to(`tenant_${tenantId}_user_${userId}`).emit(event, payload);
+  }
+
+  sendToCustomer(tenantId: string, customerRecordId: string, event: string, payload: any) {
+    this.server.to(`tenant_${tenantId}_customer_${customerRecordId}`).emit(event, payload);
   }
 }

@@ -31,7 +31,7 @@ async function runStage25Verification() {
   console.log('🚀 STAGE 25: THE CUSTOMER PORTAL EXPERIENCE VERIFICATION');
   console.log('====================================================\n');
 
-  const serviceRequestService = new ServiceRequestService(prisma as any);
+  const serviceRequestService = new ServiceRequestService(prisma as any, mockNotificationService as any);
   const portalService = new PortalService(
     prisma as any,
     configService,
