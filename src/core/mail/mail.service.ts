@@ -158,4 +158,78 @@ export class MailService {
       console.log(`[EMAIL DISPATCH TO ${to}] Subject: Technician Assigned: ${jobTitle} — ${companyName} | Tech: ${technicianName} | Time: ${scheduledAt}`);
     }
   }
+
+  async sendQuoteEmail(params: {
+    to: string;
+    customerName: string;
+    companyName: string;
+    quoteTitle: string;
+    amount: string | number;
+    portalUrl: string;
+    validUntil?: string;
+  }) {
+    const from = this.configService.get<string>('MAIL_FROM');
+    const { to, customerName, companyName, quoteTitle, amount, portalUrl, validUntil } = params;
+
+    const formattedAmount =
+      typeof amount === 'number'
+        ? new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount)
+        : String(amount);
+
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <div style="background: #006937; padding: 24px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">${companyName}</h1>
+          <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Official Commercial Proposal & Quote</p>
+        </div>
+        <div style="padding: 24px; color: #1e293b;">
+          <p style="font-size: 15px; margin-top: 0;">Hello <strong>${customerName}</strong>,</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+            A new commercial proposal has been prepared for you by <strong>${companyName}</strong>.
+          </p>
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b; width: 140px;">📋 Proposal Scope:</td>
+                <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${quoteTitle}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">💰 Total Value:</td>
+                <td style="padding: 6px 0; font-weight: 700; color: #006937; font-size: 16px;">${formattedAmount}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">⏳ Quote Validity:</td>
+                <td style="padding: 6px 0; font-weight: 600; color: #d97706;">${validUntil || '14 Days from issue'}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="text-align: center; margin: 28px 0 16px;">
+            <a href="${portalUrl}" style="background: #006937; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">
+              Review & Sign Quote Online &rarr;
+            </a>
+          </div>
+
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+            Questions regarding this proposal? Please reach out to ${companyName} directly or reply to this notice.
+          </p>
+        </div>
+      </div>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from,
+        to,
+        subject: `Commercial Proposal: ${quoteTitle} — ${companyName}`,
+        html,
+      });
+      this.logger.log(`Quote proposal email sent successfully to ${to}`);
+    } catch (error) {
+      this.logger.error(`Failed to send quote email to ${to}: ${error.message}`);
+      console.log(`[EMAIL DISPATCH TO ${to}] Subject: Commercial Proposal: ${quoteTitle} — ${companyName} | Amount: ${formattedAmount}`);
+    }
+  }
 }
+
