@@ -31,6 +31,10 @@ export class NotificationService {
     this.gateway.sendToTenant(tenantId, event, payload);
   }
 
+  sendToCustomer(tenantId: string, customerRecordId: string, event: string, payload: any) {
+    this.gateway.sendToCustomer(tenantId, customerRecordId, event, payload);
+  }
+
   async getUnreadForUser(tenantId: string, userId: string) {
     return this.prisma.notification.findMany({
       where: {

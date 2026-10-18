@@ -790,6 +790,7 @@ export class PortalService {
       role: 'CUSTOMER',
       tenantId: tenant.id,
       relationshipId: relationship.id,
+      customerRecordId: customerRecord.id,
       permissions: ['customer_portal', 'admin_access'],
     })
       .setProtectedHeader({ alg })
@@ -867,6 +868,7 @@ export class PortalService {
       role: 'CUSTOMER',
       tenantId: targetTenant.id,
       relationshipId: relationship.id,
+      customerRecordId: relationship.customerRecordId,
       permissions: ['customer_portal', 'admin_access'],
     })
       .setProtectedHeader({ alg })
@@ -1019,6 +1021,7 @@ export class PortalService {
       role: 'CUSTOMER',
       tenantId: invitation.relationship.tenantId,
       relationshipId: updatedRelationship.id,
+      customerRecordId: invitation.relationship.customerRecordId,
       permissions: ['customer_portal', 'admin_access'],
     })
       .setProtectedHeader({ alg })

@@ -212,8 +212,8 @@ export class JobService {
           `/app/dispatch`
         );
 
-        // Also broadcast custom 'realtime_update' and 'job:assigned' to tenant room (which portal and backoffice subscribe to!)
-        this.notificationService.broadcastEvent(job.tenantId, 'job:assigned', {
+        // Broadcast realtime events to tenant room (backoffice + portal listeners)
+        const dispatchPayload = {
           jobId: job.id,
           title: job.title,
           customerName: customer?.name,
@@ -226,7 +226,33 @@ export class JobService {
             rating: tech.rating,
           },
           scheduledAt: job.scheduledAt,
+        };
+
+        this.notificationService.broadcastEvent(job.tenantId, 'job:assigned', dispatchPayload);
+        this.notificationService.broadcastEvent(job.tenantId, 'job_dispatched', dispatchPayload);
+
+        this.notificationService.broadcastEvent(job.tenantId, 'realtime_update', {
+          entity: 'job',
+          action: 'assigned',
+          jobId: job.id,
+          customerRecordId: job.customerRecordId,
         });
+
+        this.notificationService.broadcastEvent(job.tenantId, 'realtime_update', {
+          entity: 'service-request',
+          action: 'assigned',
+          customerRecordId: job.customerRecordId,
+        });
+
+        // Direct notification to customer record room if available
+        if (job.customerRecordId) {
+          this.notificationService.sendToCustomer(job.tenantId, job.customerRecordId, 'job:assigned', dispatchPayload);
+          this.notificationService.sendToCustomer(job.tenantId, job.customerRecordId, 'realtime_update', {
+            entity: 'service-request',
+            action: 'assigned',
+            customerRecordId: job.customerRecordId,
+          });
+        }
 
         // Target linked customer identities for in-app notification
         for (const rel of customer?.relationships || []) {

@@ -8,7 +8,7 @@ import { UpdateServiceRequestStatusDto } from './dto/update-service-request-stat
 export class ServiceRequestService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notificationService: NotificationService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async createRequest(tenantId: string, customerRecordId: string, createDto: CreateServiceRequestDto) {
@@ -78,13 +78,24 @@ export class ServiceRequestService {
     });
 
     // Broadcast realtime update to tenant WebSocket rooms (portal and backoffice)
-    this.notificationService.broadcastEvent(tenantId, 'realtime_update', {
+    const updatePayload = {
       entity: 'service-request',
       action: 'status_updated',
       requestId,
       status: updateDto.status,
       jobId: updateDto.jobId,
-    });
+      customerRecordId: request.customerRecordId,
+    };
+
+    if (this.notificationService) {
+      this.notificationService.broadcastEvent(tenantId, 'realtime_update', updatePayload);
+      this.notificationService.broadcastEvent(tenantId, 'service_request_updated', updatePayload);
+
+      if (request.customerRecordId) {
+        this.notificationService.sendToCustomer(tenantId, request.customerRecordId, 'realtime_update', updatePayload);
+        this.notificationService.sendToCustomer(tenantId, request.customerRecordId, 'service_request_updated', updatePayload);
+      }
+    }
 
     return updated;
   }
