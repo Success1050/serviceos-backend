@@ -5,6 +5,7 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { AnalyzeImportDto } from './dto/analyze-import.dto';
 import { PreviewImportDto } from './dto/preview-import.dto';
 import { ExecuteImportDto, DuplicateRule } from './dto/execute-import.dto';
+import { TokenUtil } from '../../core/shared/utils/token.util';
 
 @Injectable()
 export class ImportService {
@@ -229,7 +230,7 @@ export class ImportService {
 
   // 4. Execute Import
   async executeImport(tenantId: string, executeDto: ExecuteImportDto) {
-    const { rows, mapping, duplicateRule } = executeDto;
+    const { rows, mapping, duplicateRule, activationChoice = 'ALL' } = executeDto;
     
     // We run preview again to resolve valid vs duplicate vs invalid
     const previewResult = await this.previewImport(tenantId, { rows, mapping });
@@ -284,11 +285,59 @@ export class ImportService {
 
     // 3. Bulk insert creations
     let createdCount = 0;
+    const createdCustomerIds: string[] = [];
     if (recordsToCreate.length > 0) {
-      const createResult = await this.prisma.customerRecord.createMany({
+      const createResult = await this.prisma.customerRecord.createManyAndReturn({
         data: recordsToCreate,
+        select: { id: true, phone: true },
       });
-      createdCount = createResult.count;
+      createdCount = createResult.length;
+      for (const item of createResult) {
+        if (
+          activationChoice === 'ALL' ||
+          (activationChoice === 'PHONE_ONLY' && item.phone)
+        ) {
+          createdCustomerIds.push(item.id);
+        }
+      }
+    }
+
+    // 4. Batch Portal Invitation Generation if requested
+    let invitedCount = 0;
+    if (createdCustomerIds.length > 0 && activationChoice !== 'NONE') {
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      for (const customerRecordId of createdCustomerIds) {
+        let relationship = await this.prisma.customerTenantRelationship.findUnique({
+          where: {
+            tenantId_customerRecordId: { tenantId, customerRecordId },
+          },
+        });
+
+        if (!relationship) {
+          relationship = await this.prisma.customerTenantRelationship.create({
+            data: {
+              tenantId,
+              customerRecordId,
+              status: 'INVITATION_PENDING',
+            },
+          });
+        }
+
+        const plainToken = TokenUtil.generateSecureToken();
+        const tokenHash = TokenUtil.hashToken(plainToken);
+
+        await this.prisma.invitation.create({
+          data: {
+            tokenHash,
+            relationshipId: relationship.id,
+            status: 'PENDING',
+            expiresAt,
+          },
+        });
+        invitedCount++;
+      }
     }
 
     return {
@@ -297,6 +346,7 @@ export class ImportService {
       updated: updatedCount,
       skipped: duplicateRule === DuplicateRule.SKIP ? previewResult.duplicates.length : 0,
       invalid: previewResult.invalid.length,
+      invited: invitedCount,
     };
   }
 

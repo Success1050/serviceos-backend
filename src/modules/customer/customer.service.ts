@@ -144,13 +144,22 @@ export class CustomerService {
     }
 
     if (query?.status && query.status !== 'ALL') {
-      andClauses.push({
-        relationships: {
-          some: {
-            status: query.status,
+      if (query.status === 'NOT_ACTIVATED') {
+        andClauses.push({
+          OR: [
+            { relationships: { none: {} } },
+            { relationships: { some: { status: 'NOT_ACTIVATED' } } },
+          ],
+        });
+      } else {
+        andClauses.push({
+          relationships: {
+            some: {
+              status: query.status,
+            },
           },
-        },
-      });
+        });
+      }
     }
 
     const where: Prisma.CustomerRecordWhereInput = andClauses.length > 0 ? { AND: andClauses } : {};
