@@ -38,9 +38,9 @@ export class ServiceRequestService {
     return this.prisma.serviceRequest.findMany({
       where: { tenantId },
       include: {
-        customerRecord: { select: { name: true, phone: true } },
+        customerRecord: { select: { id: true, name: true, phone: true, address: true, email: true } },
         asset: { select: { name: true, serialNumber: true, warrantyExpiresAt: true } },
-        job: { select: { title: true, status: true } },
+        job: { select: { id: true, title: true, status: true, scheduledAt: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

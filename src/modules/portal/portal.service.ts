@@ -511,7 +511,23 @@ export class PortalService {
         where: { tenantId, customerRecordId: relationship.customerRecordId },
         include: {
           asset: { select: { id: true, name: true, serialNumber: true } },
-          job: { select: { id: true, title: true, status: true, scheduledAt: true } },
+          job: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              scheduledAt: true,
+              assignedTechnician: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  avatarUrl: true,
+                  rating: true,
+                  phone: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         take: 10,
