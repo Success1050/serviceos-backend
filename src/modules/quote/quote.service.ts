@@ -1,13 +1,85 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { MailService } from '../../core/mail/mail.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { QuoteStatus, Prisma } from '@prisma/client';
 import { TenancyUtil } from '../../core/shared/utils/tenancy.util';
 
+interface QuotePricingMeta {
+  items?: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    category?: string;
+  }>;
+  subtotal?: number;
+  discountType?: string;
+  discountValue?: number;
+  discountAmount?: number;
+  taxAmount?: number;
+  validUntil?: string;
+  notes?: string;
+}
+
+const META_PREFIX = '<!--serviceos-quote-meta:';
+const META_SUFFIX = '-->';
+
+function packTermsWithMeta(terms?: string, meta?: QuotePricingMeta): string | null {
+  const cleanTerms = terms || '';
+  if (!meta || (!meta.items?.length && !meta.validUntil && !meta.taxAmount && !meta.discountAmount)) {
+    return cleanTerms || null;
+  }
+  const metaJson = JSON.stringify(meta);
+  return `${cleanTerms}\n\n${META_PREFIX}${metaJson}${META_SUFFIX}`.trim();
+}
+
+function unpackTermsWithMeta(rawTerms?: string | null): { termsAndConditions?: string | null; meta?: QuotePricingMeta } {
+  if (!rawTerms) return { termsAndConditions: null };
+  const startIndex = rawTerms.indexOf(META_PREFIX);
+  if (startIndex === -1) {
+    return { termsAndConditions: rawTerms };
+  }
+  const endIndex = rawTerms.indexOf(META_SUFFIX, startIndex);
+  if (endIndex === -1) {
+    return { termsAndConditions: rawTerms };
+  }
+
+  const cleanTerms = rawTerms.slice(0, startIndex).trim();
+  const jsonStr = rawTerms.slice(startIndex + META_PREFIX.length, endIndex);
+  try {
+    const meta = JSON.parse(jsonStr) as QuotePricingMeta;
+    return { termsAndConditions: cleanTerms || null, meta };
+  } catch {
+    return { termsAndConditions: rawTerms };
+  }
+}
+
+function formatQuoteResponse(quote: any): any {
+  if (!quote) return quote;
+  const { termsAndConditions, meta } = unpackTermsWithMeta(quote.termsAndConditions);
+  return {
+    ...quote,
+    termsAndConditions,
+    items: meta?.items || undefined,
+    subtotal: meta?.subtotal || undefined,
+    discountAmount: meta?.discountAmount || undefined,
+    taxAmount: meta?.taxAmount || undefined,
+    validUntil: meta?.validUntil || undefined,
+    notes: meta?.notes || undefined,
+  };
+}
+
 @Injectable()
 export class QuoteService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService,
+  ) {}
+
 
   async createQuote(user: any, createQuoteDto: CreateQuoteDto) {
     // 1. Verify that the customer record belongs to the authorized tenant / franchise network
@@ -36,7 +108,17 @@ export class QuoteService {
     }
 
     // 2. Create the quote and nested milestones if any
-    return this.prisma.$transaction(async (tx) => {
+    const meta: QuotePricingMeta = {
+      items: createQuoteDto.items,
+      subtotal: createQuoteDto.subtotal,
+      discountAmount: createQuoteDto.discountAmount,
+      taxAmount: createQuoteDto.taxAmount,
+      validUntil: createQuoteDto.validUntil,
+      notes: createQuoteDto.notes,
+    };
+    const packedTerms = packTermsWithMeta(createQuoteDto.termsAndConditions, meta);
+
+    const created = await this.prisma.$transaction(async (tx) => {
       const quote = await tx.quote.create({
         data: {
           tenantId,
@@ -44,7 +126,7 @@ export class QuoteService {
           title: createQuoteDto.title,
           amount: createQuoteDto.amount,
           billingType,
-          termsAndConditions: createQuoteDto.termsAndConditions || null,
+          termsAndConditions: packedTerms,
           status: 'DRAFT',
         },
       });
@@ -84,6 +166,8 @@ export class QuoteService {
         },
       });
     });
+
+    return formatQuoteResponse(created);
   }
 
   async getQuotes(
@@ -169,7 +253,7 @@ export class QuoteService {
     ]);
 
     return {
-      items,
+      items: items.map((q) => formatQuoteResponse(q)),
       meta: {
         total,
         page,
@@ -204,7 +288,7 @@ export class QuoteService {
       throw new NotFoundException('Quote not found or inaccessible');
     }
 
-    return quote;
+    return formatQuoteResponse(quote);
   }
 
   async updateQuote(user: any, quoteId: string, updateQuoteDto: UpdateQuoteDto) {
@@ -242,15 +326,39 @@ export class QuoteService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    let packedTerms: string | null | undefined = updateQuoteDto.termsAndConditions;
+    if (
+      updateQuoteDto.items !== undefined ||
+      updateQuoteDto.validUntil !== undefined ||
+      updateQuoteDto.discountAmount !== undefined ||
+      updateQuoteDto.taxAmount !== undefined
+    ) {
+      const { termsAndConditions: baseTerms, meta: oldMeta } = unpackTermsWithMeta(
+        updateQuoteDto.termsAndConditions !== undefined
+          ? updateQuoteDto.termsAndConditions
+          : existing.termsAndConditions,
+      );
+      const newMeta: QuotePricingMeta = {
+        ...oldMeta,
+        items: updateQuoteDto.items !== undefined ? updateQuoteDto.items : oldMeta?.items,
+        subtotal: updateQuoteDto.subtotal !== undefined ? updateQuoteDto.subtotal : oldMeta?.subtotal,
+        discountAmount:
+          updateQuoteDto.discountAmount !== undefined ? updateQuoteDto.discountAmount : oldMeta?.discountAmount,
+        taxAmount: updateQuoteDto.taxAmount !== undefined ? updateQuoteDto.taxAmount : oldMeta?.taxAmount,
+        validUntil: updateQuoteDto.validUntil !== undefined ? updateQuoteDto.validUntil : oldMeta?.validUntil,
+        notes: updateQuoteDto.notes !== undefined ? updateQuoteDto.notes : oldMeta?.notes,
+      };
+      packedTerms = packTermsWithMeta(baseTerms || undefined, newMeta);
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
       const data: Prisma.QuoteUpdateInput = {};
 
       if (updateQuoteDto.title !== undefined) data.title = updateQuoteDto.title;
       if (updateQuoteDto.amount !== undefined) data.amount = updateQuoteDto.amount;
       if (updateQuoteDto.billingType !== undefined) data.billingType = updateQuoteDto.billingType;
       if (updateQuoteDto.status !== undefined) data.status = updateQuoteDto.status;
-      if (updateQuoteDto.termsAndConditions !== undefined)
-        data.termsAndConditions = updateQuoteDto.termsAndConditions;
+      if (packedTerms !== undefined) data.termsAndConditions = packedTerms;
 
       if (updateQuoteDto.customerRecordId !== undefined) {
         data.customerRecord = { connect: { id: updateQuoteDto.customerRecordId } };
@@ -301,6 +409,8 @@ export class QuoteService {
         },
       });
     });
+
+    return formatQuoteResponse(updated);
   }
 
   async sendQuote(user: any, quoteId: string) {
@@ -309,6 +419,11 @@ export class QuoteService {
       where: {
         id: quoteId,
         ...(Object.keys(tenantFilter).length > 0 ? tenantFilter : {}),
+      },
+      include: {
+        tenant: true,
+        customerRecord: true,
+        milestones: { orderBy: { order: 'asc' } },
       },
     });
 
@@ -320,14 +435,41 @@ export class QuoteService {
       throw new BadRequestException('Only DRAFT quotes can be sent');
     }
 
-    return this.prisma.quote.update({
+    const updated = await this.prisma.quote.update({
       where: { id: quoteId },
       data: { status: 'SENT' },
       include: {
         milestones: { orderBy: { order: 'asc' } },
         customerRecord: true,
+        tenant: true,
       },
     });
+
+    // Send notification email to customer if email is configured
+    if (updated.customerRecord?.email) {
+      const frontendBaseUrl = (
+        this.configService?.get<string>('FRONTEND_URL') ||
+        process.env.FRONTEND_URL ||
+        'http://localhost:3000'
+      ).replace(/\/+$/, '');
+      const portalSlug = updated.tenant?.slug || 'portal';
+      const portalUrl = `${frontendBaseUrl}/s/${portalSlug}/quotes/${quote.id}`;
+
+      try {
+        await this.mailService.sendQuoteEmail({
+          to: updated.customerRecord.email,
+          customerName: updated.customerRecord.name,
+          companyName: updated.tenant?.name || 'ServiceOS Contractor',
+          quoteTitle: updated.title,
+          amount: Number(updated.amount),
+          portalUrl,
+        });
+      } catch (err: any) {
+        console.warn(`Could not dispatch quote email to ${updated.customerRecord.email}:`, err?.message);
+      }
+    }
+
+    return formatQuoteResponse(updated);
   }
 
   async deleteQuote(user: any, quoteId: string) {

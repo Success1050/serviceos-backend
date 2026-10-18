@@ -30,7 +30,32 @@ export class UpdateQuoteDto {
 
   @IsArray()
   @IsOptional()
+  items?: any[];
+
+  @IsNumber()
+  @IsOptional()
+  subtotal?: number;
+
+  @IsNumber()
+  @IsOptional()
+  discountAmount?: number;
+
+  @IsNumber()
+  @IsOptional()
+  taxAmount?: number;
+
+  @IsString()
+  @IsOptional()
+  validUntil?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @IsArray()
+  @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateMilestoneItemDto)
   milestones?: CreateMilestoneItemDto[];
 }
+

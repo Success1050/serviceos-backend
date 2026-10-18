@@ -169,6 +169,17 @@ export class CustomerService {
       this.prisma.customerRecord.findMany({
         where,
         include: {
+          assets: {
+            select: {
+              id: true,
+              name: true,
+              manufacturer: true,
+              modelNumber: true,
+              serialNumber: true,
+              warrantyExpiresAt: true,
+              status: true,
+            },
+          },
           relationships: {
             select: {
               id: true,
