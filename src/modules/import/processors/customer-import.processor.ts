@@ -70,6 +70,7 @@ export class CustomerImportProcessor {
         let p = String(parsed.phone).trim().replace(/\D/g, '');
         if (p.startsWith('234') && p.length === 13) p = '+' + p;
         else if (p.startsWith('0') && p.length === 11) p = '+234' + p.substring(1);
+        else if (p.length === 10 && /^[789]/.test(p)) p = '+234' + p;
         else if (String(parsed.phone).startsWith('+')) p = '+' + p;
         parsed.phone = p;
       }

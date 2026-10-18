@@ -1,4 +1,4 @@
-﻿import { IsArray, IsEnum, IsNotEmpty, IsObject } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
 
 export enum DuplicateRule {
   SKIP = 'SKIP',
@@ -18,4 +18,9 @@ export class ExecuteImportDto {
   @IsEnum(DuplicateRule)
   @IsNotEmpty()
   duplicateRule: DuplicateRule;
+
+  @IsOptional()
+  @IsString()
+  activationChoice?: 'ALL' | 'PHONE_ONLY' | 'NONE';
 }
+

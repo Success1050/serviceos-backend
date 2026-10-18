@@ -5,6 +5,7 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { AnalyzeImportDto } from './dto/analyze-import.dto';
 import { PreviewImportDto } from './dto/preview-import.dto';
 import { ExecuteImportDto, DuplicateRule } from './dto/execute-import.dto';
+import { TokenUtil } from '../../core/shared/utils/token.util';
 
 @Injectable()
 export class ImportService {
@@ -21,32 +22,117 @@ export class ImportService {
     const headers = Object.keys(rows[0]);
     const mapping: Record<string, string> = {};
 
-    const dictionary = {
-      name: ['name', 'customer name', 'full name', 'client name'],
-      email: ['email', 'email address', 'e-mail'],
-      phone: ['phone', 'phone number', 'mobile', 'telephone', 'mobile no.'],
-      address: ['address', 'house address', 'street'],
-      city: ['city', 'town']
-    };
-
     for (const header of headers) {
-      const normalizedHeader = header.toLowerCase().trim();
-      for (const [sysField, variations] of Object.entries(dictionary)) {
-        if (variations.some(v => normalizedHeader.includes(v))) {
-          mapping[header] = sysField;
-          break; // move to next header
-        }
+      const normalized = header.toLowerCase().trim();
+
+      // Explicit priority safeguards to prevent substring collisions (e.g., 'email address' vs 'address')
+      if (
+        normalized.includes('email') ||
+        normalized.includes('e-mail') ||
+        normalized === 'mail'
+      ) {
+        mapping[header] = 'email';
+      } else if (
+        normalized.includes('phone') ||
+        normalized.includes('mobile') ||
+        normalized.includes('telephone') ||
+        normalized.includes('tel') ||
+        normalized.includes('contact no')
+      ) {
+        mapping[header] = 'phone';
+      } else if (
+        normalized.includes('name') ||
+        normalized.includes('client') ||
+        normalized.includes('customer') ||
+        normalized.includes('business') ||
+        normalized.includes('contact person')
+      ) {
+        mapping[header] = 'name';
+      } else if (
+        normalized.includes('address') ||
+        normalized.includes('street') ||
+        normalized.includes('site') ||
+        normalized.includes('location')
+      ) {
+        mapping[header] = 'address';
+      } else if (
+        normalized.includes('city') ||
+        normalized.includes('town') ||
+        normalized.includes('state') ||
+        normalized.includes('region') ||
+        normalized.includes('lga')
+      ) {
+        mapping[header] = 'city';
       }
     }
 
     return {
       headers,
       suggestedMapping: mapping,
-      rowCount: rows.length
+      rowCount: rows.length,
     };
   }
 
-  // 2. Helper to normalize phone numbers (specifically handling Nigerian formats)
+  // Official sample customer template rows supported by the backend
+  getSampleTemplateRows() {
+    return [
+      {
+        'Customer Name': 'Chief Adeleke Solarin',
+        'Phone Number': '08031234567',
+        'Email Address': 'adeleke@sunshinesolar.ng',
+        'Installation Address': 'Plot 14 Admiralty Way Lekki Phase 1',
+        'City': 'Lagos',
+      },
+      {
+        'Customer Name': 'Dr. Ngozi Okonjo',
+        'Phone Number': '08029876543',
+        'Email Address': 'ngozi.okonjo@horizonenergy.org',
+        'Installation Address': '12 Maitama Crescent',
+        'City': 'Abuja',
+      },
+      {
+        'Customer Name': 'Green Valley Estate Facility Office',
+        'Phone Number': '08105556677',
+        'Email Address': 'operations@greenvalley.ng',
+        'Installation Address': 'Km 42 Lekki-Epe Expressway',
+        'City': 'Lagos',
+      },
+      {
+        'Customer Name': 'Kano Renewable Cold Storage Ltd',
+        'Phone Number': '08098765432',
+        'Email Address': 'procurement@kanocold.com',
+        'Installation Address': '8 Bompai Industrial Area',
+        'City': 'Kano',
+      },
+      {
+        'Customer Name': 'Babatunde Fashola Homes',
+        'Phone Number': '08123456789',
+        'Email Address': 'babatunde@fasholahomes.ng',
+        'Installation Address': '25 Isaac John Street GRA Ikeja',
+        'City': 'Lagos',
+      },
+    ];
+  }
+
+  // Canonical CSV template formatted for download
+  getSampleCsvTemplate(): string {
+    const rows = this.getSampleTemplateRows();
+    const headers = Object.keys(rows[0]);
+    const lines = [
+      headers.join(','),
+      ...rows.map((row) =>
+        headers
+          .map((h) => {
+            const val = row[h as keyof typeof row] || '';
+            return `"${String(val).replace(/"/g, '""')}"`;
+          })
+          .join(','),
+      ),
+    ];
+    return lines.join('\r\n');
+  }
+
+  // 2. Helper to normalize phone numbers (specifically handling Nigerian formats + Excel trimmed leading zero)
   private normalizePhone(phone: string | number | undefined | null): string | null {
     if (!phone) return null;
     let normalized = String(phone).trim().replace(/\D/g, ''); // remove non-digits
@@ -57,6 +143,10 @@ export class ImportService {
     }
     if (normalized.startsWith('0') && normalized.length === 11) {
       return '+234' + normalized.substring(1);
+    }
+    // Handle 10-digit Nigerian number where spreadsheet/Excel stripped the leading 0 (e.g., 8031234567)
+    if (normalized.length === 10 && /^[789]/.test(normalized)) {
+      return '+234' + normalized;
     }
     
     // If it's already got a +, just return it cleaned
@@ -140,7 +230,7 @@ export class ImportService {
 
   // 4. Execute Import
   async executeImport(tenantId: string, executeDto: ExecuteImportDto) {
-    const { rows, mapping, duplicateRule } = executeDto;
+    const { rows, mapping, duplicateRule, activationChoice = 'ALL' } = executeDto;
     
     // We run preview again to resolve valid vs duplicate vs invalid
     const previewResult = await this.previewImport(tenantId, { rows, mapping });
@@ -195,11 +285,59 @@ export class ImportService {
 
     // 3. Bulk insert creations
     let createdCount = 0;
+    const createdCustomerIds: string[] = [];
     if (recordsToCreate.length > 0) {
-      const createResult = await this.prisma.customerRecord.createMany({
+      const createResult = await this.prisma.customerRecord.createManyAndReturn({
         data: recordsToCreate,
+        select: { id: true, phone: true },
       });
-      createdCount = createResult.count;
+      createdCount = createResult.length;
+      for (const item of createResult) {
+        if (
+          activationChoice === 'ALL' ||
+          (activationChoice === 'PHONE_ONLY' && item.phone)
+        ) {
+          createdCustomerIds.push(item.id);
+        }
+      }
+    }
+
+    // 4. Batch Portal Invitation Generation if requested
+    let invitedCount = 0;
+    if (createdCustomerIds.length > 0 && activationChoice !== 'NONE') {
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      for (const customerRecordId of createdCustomerIds) {
+        let relationship = await this.prisma.customerTenantRelationship.findUnique({
+          where: {
+            tenantId_customerRecordId: { tenantId, customerRecordId },
+          },
+        });
+
+        if (!relationship) {
+          relationship = await this.prisma.customerTenantRelationship.create({
+            data: {
+              tenantId,
+              customerRecordId,
+              status: 'INVITATION_PENDING',
+            },
+          });
+        }
+
+        const plainToken = TokenUtil.generateSecureToken();
+        const tokenHash = TokenUtil.hashToken(plainToken);
+
+        await this.prisma.invitation.create({
+          data: {
+            tokenHash,
+            relationshipId: relationship.id,
+            status: 'PENDING',
+            expiresAt,
+          },
+        });
+        invitedCount++;
+      }
     }
 
     return {
@@ -208,6 +346,7 @@ export class ImportService {
       updated: updatedCount,
       skipped: duplicateRule === DuplicateRule.SKIP ? previewResult.duplicates.length : 0,
       invalid: previewResult.invalid.length,
+      invited: invitedCount,
     };
   }
 
