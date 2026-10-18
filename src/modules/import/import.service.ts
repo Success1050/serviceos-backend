@@ -197,12 +197,19 @@ export class ImportService {
         continue;
       }
 
-      // Duplicate detection
-      const isDuplicate = existingCustomers.find(c => 
-        (parsedRecord.phone && c.phone === parsedRecord.phone) || 
-        (parsedRecord.email && c.email === parsedRecord.email) ||
-        (c.name === parsedRecord.name && (c.phone === parsedRecord.phone || c.email === parsedRecord.email))
-      );
+      // Duplicate detection (normalized phone & case-insensitive email matching)
+      const isDuplicate = existingCustomers.find((c) => {
+        const cPhoneNorm = this.normalizePhone(c.phone);
+        const cEmailLower = c.email?.toLowerCase().trim();
+        const phoneMatch = Boolean(
+          parsedRecord.phone && (c.phone === parsedRecord.phone || cPhoneNorm === parsedRecord.phone),
+        );
+        const emailMatch = Boolean(parsedRecord.email && cEmailLower === parsedRecord.email);
+        const nameMatch = Boolean(
+          parsedRecord.name && c.name?.toLowerCase().trim() === parsedRecord.name?.toLowerCase().trim(),
+        );
+        return phoneMatch || emailMatch || (nameMatch && (phoneMatch || emailMatch));
+      });
 
       if (isDuplicate) {
         duplicates.push({ 

@@ -45,8 +45,16 @@ export class CustomerImportProcessor {
     const existingEmailMap = new Map<string, string>();
 
     for (const c of existing) {
-      if (c.phone) existingPhoneMap.set(c.phone, c.id);
-      if (c.email) existingEmailMap.set(c.email.toLowerCase(), c.id);
+      if (c.phone) {
+        existingPhoneMap.set(c.phone, c.id);
+        let p = String(c.phone).trim().replace(/\D/g, '');
+        if (p.startsWith('234') && p.length === 13) p = '+' + p;
+        else if (p.startsWith('0') && p.length === 11) p = '+234' + p.substring(1);
+        else if (p.length === 10 && /^[789]/.test(p)) p = '+234' + p;
+        else if (String(c.phone).startsWith('+')) p = '+' + p;
+        existingPhoneMap.set(p, c.id);
+      }
+      if (c.email) existingEmailMap.set(c.email.toLowerCase().trim(), c.id);
     }
 
     await job.progress(15);
