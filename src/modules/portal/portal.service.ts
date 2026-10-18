@@ -70,6 +70,12 @@ export class PortalService {
       `/app/customers`,
     );
 
+    this.notificationService.broadcastEvent(tenantId, 'realtime_update', {
+      entity: 'service-request',
+      action: 'created',
+      requestId: created.id,
+    });
+
     return created;
   }
 

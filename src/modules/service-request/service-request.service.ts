@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestStatusDto } from './dto/update-service-request-status.dto';
 
 @Injectable()
 export class ServiceRequestService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async createRequest(tenantId: string, customerRecordId: string, createDto: CreateServiceRequestDto) {
     // Optionally verify asset if provided
@@ -65,12 +69,23 @@ export class ServiceRequestService {
       }
     }
 
-    return this.prisma.serviceRequest.update({
+    const updated = await this.prisma.serviceRequest.update({
       where: { id: requestId },
       data: {
         status: updateDto.status,
         jobId: updateDto.jobId !== undefined ? updateDto.jobId : undefined,
       },
     });
+
+    // Broadcast realtime update to tenant WebSocket rooms (portal and backoffice)
+    this.notificationService.broadcastEvent(tenantId, 'realtime_update', {
+      entity: 'service-request',
+      action: 'status_updated',
+      requestId,
+      status: updateDto.status,
+      jobId: updateDto.jobId,
+    });
+
+    return updated;
   }
 }
