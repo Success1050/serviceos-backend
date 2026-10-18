@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException, Inject, forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { PaymentService } from '../payment/payment.service';
 import { SplitSettlementService } from '../wallet/services/split-settlement.service';
+import { NotificationService } from '../notification/notification.service';
+import { MailService } from '../../core/mail/mail.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
@@ -14,6 +17,9 @@ export class JobService {
     private readonly paymentService: PaymentService,
     @Inject(forwardRef(() => SplitSettlementService))
     private readonly splitSettlementService?: SplitSettlementService,
+    private readonly notificationService?: NotificationService,
+    private readonly mailService?: MailService,
+    private readonly configService?: ConfigService,
   ) {}
 
   async createJob(tenantId: string, createJobDto: CreateJobDto, user?: any) {
@@ -68,7 +74,7 @@ export class JobService {
     }
 
     // 3. Create job
-    return this.prisma.job.create({
+    const createdJob = await this.prisma.job.create({
       data: {
         tenantId: effectiveTenantId,
         title: createJobDto.title,
@@ -80,6 +86,12 @@ export class JobService {
         estimatedDuration: createJobDto.estimatedDuration || 60,
       },
     });
+
+    if (createJobDto.assignedTechnicianId) {
+      this.notifyCustomerAndTechOfDispatch(createdJob.id, createJobDto.assignedTechnicianId);
+    }
+
+    return createdJob;
   }
 
   async updateJob(tenantId: string, jobId: string, updateDto: any, user: any) {
@@ -130,7 +142,7 @@ export class JobService {
       updateData.status = updateDto.status === 'PENDING' ? 'SCHEDULED' : updateDto.status;
     }
 
-    return this.prisma.job.update({
+    const updatedJob = await this.prisma.job.update({
       where: { id: jobId },
       data: updateData,
       include: {
@@ -138,6 +150,127 @@ export class JobService {
         assignedTechnician: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    // If technician was assigned or changed, dispatch notification pipeline
+    if (updateDto.assignedTechnicianId && updateDto.assignedTechnicianId !== job.assignedTechnicianId) {
+      this.notifyCustomerAndTechOfDispatch(updatedJob.id, updateDto.assignedTechnicianId);
+    } else if (techId && updateDto.scheduledAt && updateDto.scheduledAt !== job.scheduledAt?.toISOString()) {
+      // If rescheduled with assigned technician, also notify
+      this.notifyCustomerAndTechOfDispatch(updatedJob.id, techId);
+    }
+
+    return updatedJob;
+  }
+
+  private async notifyCustomerAndTechOfDispatch(jobId: string, technicianId: string) {
+    try {
+      const job = await this.prisma.job.findUnique({
+        where: { id: jobId },
+        include: {
+          customerRecord: {
+            include: {
+              relationships: true,
+            },
+          },
+          assignedTechnician: true,
+          tenant: true,
+        },
+      });
+
+      if (!job || !job.assignedTechnician) return;
+
+      const tech = job.assignedTechnician;
+      const customer = job.customerRecord;
+      const tenant = job.tenant;
+
+      const dateStr = job.scheduledAt
+        ? new Date(job.scheduledAt).toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          })
+        : 'Earliest Available Time Window';
+
+      const techName = `${tech.firstName} ${tech.lastName}`.trim();
+      const techPhone = tech.phone || 'Technician Line';
+      const companyName = tenant?.name || 'ServiceOS';
+      const portalSlug = tenant?.slug || 'default';
+      const frontendBaseUrl = (this.configService?.get<string>('FRONTEND_URL') || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+      const portalUrl = `${frontendBaseUrl}/s/${portalSlug}/dashboard`;
+
+      // 1. In-App Notification (Database + WebSocket realtime push)
+      if (this.notificationService) {
+        // Send to tenant so staff dashboard / backoffice sees assignment event
+        await this.notificationService.sendToTenant(
+          job.tenantId,
+          `Technician Assigned: ${job.title}`,
+          `Engr. ${techName} has been assigned to ${customer?.name || 'Client'} for ${dateStr}.`,
+          'JOB_DISPATCH',
+          `/app/dispatch`
+        );
+
+        // Also broadcast custom 'realtime_update' and 'job:assigned' to tenant room (which portal and backoffice subscribe to!)
+        this.notificationService.broadcastEvent(job.tenantId, 'job:assigned', {
+          jobId: job.id,
+          title: job.title,
+          customerName: customer?.name,
+          customerRecordId: job.customerRecordId,
+          technician: {
+            id: tech.id,
+            name: techName,
+            phone: techPhone,
+            avatarUrl: tech.avatarUrl,
+            rating: tech.rating,
+          },
+          scheduledAt: job.scheduledAt,
+        });
+
+        // Target linked customer identities for in-app notification
+        for (const rel of customer?.relationships || []) {
+          if (rel.identityId) {
+            await this.notificationService.sendToUser(
+              job.tenantId,
+              rel.identityId,
+              `Technician Assigned: ${job.title}`,
+              `Engr. ${techName} (${techPhone}) has been assigned to your service appointment on ${dateStr}.`,
+              'JOB_DISPATCH',
+              `/s/${portalSlug}/dashboard`
+            );
+          }
+        }
+      }
+
+      // 2. Email Notification to Customer
+      if (customer?.email && this.mailService) {
+        await this.mailService.sendTechnicianAssignedCustomerEmail({
+          to: customer.email,
+          customerName: customer.name,
+          companyName,
+          jobTitle: job.title,
+          scheduledAt: dateStr,
+          technicianName: techName,
+          technicianPhone: tech.phone || undefined,
+          portalUrl,
+        });
+      }
+
+      // 3. SMS Notification to Customer (Stage 25 / Stage 27 SMS Gateway)
+      if (customer?.phone) {
+        const customerSmsMessage = `Hello ${customer.name}, ${companyName} has scheduled Engr. ${techName} (${techPhone}) for your service visit on ${dateStr}. Track in your portal: ${portalUrl}`;
+        console.log(`[CUSTOMER DISPATCH SMS] To: ${customer.phone} | "${customerSmsMessage}"`);
+      }
+
+      // 4. SMS Notification to Technician (Stage 27 Feature-Phone / Button Phone pipeline)
+      if (tech.phone) {
+        const techSmsBrief = `ServiceOS Dispatch: You have been assigned to "${job.title}". Client: ${customer?.name || 'Customer'}, Address: ${customer?.address || 'Site Address'}, Scheduled: ${dateStr}. Client Phone: ${customer?.phone || 'N/A'}`;
+        console.log(`[TECHNICIAN DISPATCH SMS] To: ${tech.phone} | "${techSmsBrief}"`);
+      }
+    } catch (err: any) {
+      console.error('[DISPATCH NOTIFICATION ERROR]', err?.message || err);
+    }
   }
 
   async getJobs(tenantId: string, user: any) {
