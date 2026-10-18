@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException, Inject, forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { PaymentService } from '../payment/payment.service';
 import { SplitSettlementService } from '../wallet/services/split-settlement.service';
@@ -18,6 +19,7 @@ export class JobService {
     private readonly splitSettlementService?: SplitSettlementService,
     private readonly notificationService?: NotificationService,
     private readonly mailService?: MailService,
+    private readonly configService?: ConfigService,
   ) {}
 
   async createJob(tenantId: string, createJobDto: CreateJobDto, user?: any) {
@@ -196,7 +198,8 @@ export class JobService {
       const techPhone = tech.phone || 'Technician Line';
       const companyName = tenant?.name || 'ServiceOS';
       const portalSlug = tenant?.slug || 'default';
-      const portalUrl = `http://localhost:3000/s/${portalSlug}/dashboard`;
+      const frontendBaseUrl = (this.configService?.get<string>('FRONTEND_URL') || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+      const portalUrl = `${frontendBaseUrl}/s/${portalSlug}/dashboard`;
 
       // 1. In-App Notification (Database + WebSocket realtime push)
       if (this.notificationService) {
